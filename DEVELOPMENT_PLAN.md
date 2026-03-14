@@ -390,7 +390,7 @@ Polymarket_news_bot/
 | Fase | Naam | Sessies | Status |
 |---|---|---|---|
 | 0 | Foundation | 1-2 | ☑ Afgerond |
-| 1 | Polymarket Adapter | 3-4 | ☐ Niet gestart |
+| 1 | Polymarket Adapter | 3-4 | ☑ Afgerond |
 | 2 | News Ingestion | 5-6 | ☐ Niet gestart |
 | 3 | Relevance + Mapping | 7-8 | ☐ Niet gestart |
 | 4 | Edge + Risk | 9-10 | ☐ Niet gestart |

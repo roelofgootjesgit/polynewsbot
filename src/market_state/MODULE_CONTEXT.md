@@ -1,19 +1,23 @@
 # Market State Analyzer — MODULE_CONTEXT
 
 ## Wat
-Beoordeelt of een markt praktisch verhandelbaar is. Leest orderboek, spread, liquiditeit.
+Beoordeelt of een markt praktisch verhandelbaar is. Leest orderboek en berekent metrics.
 
-## Te bouwen (Fase 1)
-- `analyzer.py` — MarketStateAnalyzer: market_id → MarketState
+## Bestanden
+- `analyzer.py` — MarketStateAnalyzer: orderbook dict → MarketState
+
+## MarketStateAnalyzer
+- `analyze(market_id, orderbook)` → MarketState
+- Parseert bids/asks, berekent spread, mid price, implied probability
+- Schat slippage in basis points
+- Classificeert liquidity quality (high/medium/low)
 
 ## Interfaces
-- **Input:** market_id (via Polymarket adapter)
-- **Output:** MarketState (bid/ask, spread, depth, slippage estimate, liquidity quality)
+- **Input:** market_id + raw orderbook dict (van PolymarketClient.get_orderbook())
+- **Output:** MarketState (Pydantic model uit src.models.markets)
 
-## Key insight
-Theoretische edge is waardeloos als execution de volledige edge opeet.
-
-## Config sectie: gebruikt `edge.*` en `risk.*` thresholds
+## Config: gebruikt `risk.max_spread` voor quality assessment
 
 ## Status
-- [ ] Niet gestart — gepland voor Fase 1
+- [x] analyzer.py — volledig werkend
+- [x] Unit tests (8 passing)

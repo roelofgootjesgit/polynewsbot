@@ -3,20 +3,28 @@
 ## Wat
 Polymarket API adapter + order lifecycle management.
 
-## Te bouwen (Fase 1)
-- `polymarket_client.py` — API wrapper: markten ophalen, orderboek, orders plaatsen, wallet signing
-- `order_manager.py` — Order tracking, fills, cancel, state persistence
+## Bestanden
+- `polymarket_client.py` — Unified client: Gamma API (market data) + CLOB API (trading)
+- `order_manager.py` — Order tracking, fills, cancel, dry-run mode, state persistence
 
-## Interfaces
-- **Input:** TradeDecision (van edge engine, na risk approval)
-- **Output:** Order geplaatst, fill info, position created
+## PolymarketClient
+- `connect()` — init CLOB client, optioneel met wallet auth
+- `get_events()`, `get_markets()`, `get_all_active_events()` — Gamma API (public, no auth)
+- `get_event_by_slug()` — specifiek event ophalen
+- `get_orderbook()`, `get_price()`, `get_midpoint()` — CLOB API
+- `place_order()`, `cancel_order()`, `cancel_all_orders()` — trading (auth vereist)
+- `get_positions()` — huidige posities
 
-## Polymarket specifiek
-- YES/NO shares (niet klassieke assets)
-- CLOB (Central Limit Order Book) via py-clob-client
-- Wallet signing vereist voor orders
+## OrderManager
+- `submit_order()` — plaatst order of simuleert in dry-run
+- `cancel()` — cancel order
+- `save_state()` / `load_state()` — JSON state persistence
+- ManagedOrder model met status tracking
 
-## Config sectie: `polymarket.*` en `execution.*` in default.yaml
+## Config secties: `polymarket.*` en `execution.*`
 
 ## Status
-- [ ] Niet gestart — gepland voor Fase 1
+- [x] polymarket_client.py — Gamma + CLOB API
+- [x] order_manager.py — dry-run + state persistence
+- [x] Unit tests (4 passing)
+- [x] Integration tests (5 passing + 1 skip)
