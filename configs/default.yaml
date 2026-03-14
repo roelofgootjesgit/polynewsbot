@@ -1,0 +1,99 @@
+# Polymarket News Bot — Default Configuration
+# Override per environment with a separate YAML or .env
+
+polymarket:
+  api_key: ""
+  secret: ""
+  wallet_private_key: ""
+  chain_id: 137
+  base_url: "https://clob.polymarket.com"
+  gamma_url: "https://gamma-api.polymarket.com"
+
+news:
+  newsapi_key: ""
+  poll_interval_seconds: 30
+  max_age_minutes: 15
+  sources:
+    rss:
+      enabled: true
+      feeds:
+        - name: "Reuters World"
+          url: "https://feeds.reuters.com/reuters/worldNews"
+          tier: 2
+        - name: "CoinDesk"
+          url: "https://www.coindesk.com/arc/outboundfeeds/rss/"
+          tier: 2
+    newsapi:
+      enabled: false
+      categories: ["business", "technology", "politics"]
+      language: "en"
+
+  source_tiers:
+    tier_1_reliability: 0.95
+    tier_2_reliability: 0.80
+    tier_3_reliability: 0.55
+    tier_4_reliability: 0.25
+
+filter:
+  min_relevance_score: 0.5
+  max_age_minutes: 15
+  keywords_whitelist: []
+  keywords_blacklist: []
+  categories:
+    - "crypto"
+    - "politics"
+    - "economics"
+    - "regulation"
+    - "central_banks"
+
+mapping:
+  min_mapping_confidence: 0.6
+  min_liquidity_score: 0.3
+  max_markets_per_event: 3
+
+resolution:
+  min_understanding_confidence: 0.7
+
+probability:
+  method: "rule_based"   # rule_based | llm | hybrid
+  min_confidence: 0.4
+
+edge:
+  min_raw_edge: 0.05
+  min_net_edge: 0.03
+  fee_rate: 0.02
+  slippage_estimate: 0.01
+  uncertainty_penalty_weight: 0.5
+
+execution:
+  dry_run: true
+  order_type: "limit"
+  max_retry: 3
+  timeout_seconds: 10
+
+risk:
+  max_position_pct: 0.02        # 2% of capital per trade
+  max_cluster_pct: 0.05         # 5% per event cluster
+  max_total_exposure_pct: 0.20  # 20% total
+  min_source_tier: 3            # don't trade on tier 4 alone
+  min_confidence: 0.5
+  max_spread: 0.10
+  max_daily_loss_pct: 0.05
+  equity_kill_switch_pct: 0.15
+
+monitor:
+  check_interval_seconds: 60
+  thesis_recheck_on_new_news: true
+  take_profit_edge_absorbed: 0.7
+  force_exit_thesis_invalid: true
+  time_exit_hours: 72
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_path: "logs/newsbot.log"
+
+audit:
+  log_decisions: true
+  log_dir: "logs/decisions"
+  replay_enabled: false

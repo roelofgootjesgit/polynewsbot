@@ -1,0 +1,548 @@
+{
+  "meta": {
+    "document_type": "cursor_project_context",
+    "version": "1.0",
+    "language": "nl",
+    "project_name": "OCLW Polymarket News Trading Retrofit",
+    "project_goal": "Bouw een event-driven AI news trading systeem voor prediction markets door de bestaande OCLW bot als machinekamer te behouden en de price-driven signaalintelligentie te vervangen door information-driven besluitvorming."
+  },
+
+  "strategic_foundation": {
+    "core_thesis": "Prediction markets prijzen kansen. Nieuws verandert kansen vaak eerder dan de marktprijs zich volledig aanpast. De bot moet publieke informatie sneller en consistenter verwerken dan menselijke traders.",
+    "primary_edge": "informatie-latency",
+    "edge_formula": "edge = model_probability - market_implied_probability",
+    "mission": "Niet prijsactie voorspellen, maar nieuwe informatie vertalen naar kansverandering en handelen voordat de markt volledig repriced.",
+    "why_prediction_markets": [
+      "prijzen representeren direct implied probability",
+      "lagere efficiëntie dan grote financiële markten",
+      "lagere liquiditeit kan repricing vertragen",
+      "veel deelnemers handelen op intuïtie, overtuiging of sentiment"
+    ],
+    "system_superpower": [
+      "sneller nieuws detecteren",
+      "de impact op resolutie consistenter inschatten",
+      "direct handelen wanneer de markt nog inefficiënt geprijsd is"
+    ]
+  },
+
+  "non_goals": {
+    "what_this_system_is_not": [
+      "geen klassieke technische analyse bot",
+      "geen indicator-driven signal engine",
+      "geen candle-pattern strategy",
+      "geen model dat vrij associeert zonder resolutielogica",
+      "geen blind headline keyword bot"
+    ],
+    "anti_patterns": [
+      "headline bevat woord X dus koop YES",
+      "traden zonder resolutiecheck",
+      "traden op geruchten zonder bronweging",
+      "theoretische edge gebruiken zonder executiekosten en slippage",
+      "AI direct orders laten sturen zonder guardrail veto"
+    ]
+  },
+
+  "prediction_market_model": {
+    "market_structure": {
+      "instrument_type": "YES_NO_shares",
+      "price_range": [0.0, 1.0],
+      "meaning_of_price": "prijs representeert implied probability van een gebeurtenis",
+      "resolution_logic": "YES wordt 1.0 waard bij geldige resolutie, anders 0.0"
+    },
+    "trading_logic": {
+      "trade_when": "de geschatte model probability significant afwijkt van de actuele markt probability",
+      "entry_example_logic": "koop YES wanneer model_probability substantieel hoger ligt dan execution-adjusted market_probability",
+      "exit_can_happen_before_resolution": true,
+      "important_microstructure_note": "orderboek, spread, volume, slippage en repricing-snelheid bepalen of theoretische edge ook werkelijk uitvoerbaar is"
+    }
+  },
+
+  "retrofit_principle": {
+    "base_codebase": "OCLW_bot",
+    "retrofit_mode": true,
+    "principle": "Hergebruik de bestaande trading-infrastructuur. Vervang de strategie-intelligentie. Bouw nieuwe event-driven modules bovenop de bestaande machinekamer.",
+    "separation_rule": "Scheid trading infrastructure van trading intelligence.",
+    "keep_machine_room": true
+  },
+
+  "oclw_reuse_plan": {
+    "reuse_as_is_or_minimally_adapt": [
+      "scheduler / event loop",
+      "config loading and config validation",
+      "risk management foundation",
+      "guardrail framework",
+      "logging infrastructure",
+      "monitoring / health checks",
+      "state handling",
+      "order lifecycle patterns where generic",
+      "process supervision"
+    ],
+    "replace_or_deprecate": [
+      "price-driven signal engine",
+      "indicator-based alpha logic",
+      "candle interpretation logic",
+      "strategy components that depend on OHLC pattern detection as primary decision source"
+    ],
+    "new_to_build": [
+      "news ingestion layer",
+      "source normalization layer",
+      "relevance filter",
+      "market mapping engine",
+      "resolution understanding layer",
+      "probability engine",
+      "market state analyzer for prediction markets",
+      "edge engine",
+      "polymarket execution adapter",
+      "event cluster portfolio manager",
+      "position monitor for thesis validity",
+      "audit and replay system for news-driven decisions"
+    ]
+  },
+
+  "system_architecture": {
+    "design_principle": "De bot handelt niet direct op nieuws, maar pas nadat een reeks gecontroleerde interpretatiestappen groen licht geeft.",
+    "decision_chain": [
+      "informatie komt binnen",
+      "informatie wordt genormaliseerd",
+      "relevantie wordt beoordeeld",
+      "event wordt gekoppeld aan een markt",
+      "resolutiecriteria worden geïnterpreteerd",
+      "probability update wordt berekend",
+      "marktstaat en uitvoerbaarheid worden beoordeeld",
+      "netto edge wordt berekend",
+      "risk en guardrails geven veto of toestemming",
+      "order wordt uitgevoerd",
+      "positie blijft gemonitord op thesis-validity"
+    ],
+    "architecture_goal": "van tekst naar kans, en van kans naar trade"
+  },
+
+  "core_modules": [
+    {
+      "name": "news_ingestion_layer",
+      "purpose": "Verzamel informatie uit meerdere bronnen en lever deze gestandaardiseerd aan de rest van het systeem.",
+      "responsibilities": [
+        "fetch headlines, articles, official statements, releases, posts, transcripts",
+        "normaliseer ruwe input naar één intern event-object",
+        "timestamp ontvangst zo vroeg mogelijk",
+        "voeg bronmetadata toe"
+      ],
+      "must_capture_fields": [
+        "event_id",
+        "received_at",
+        "source_name",
+        "source_type",
+        "headline",
+        "summary",
+        "raw_text",
+        "url_or_identifier",
+        "language",
+        "source_priority",
+        "source_reliability_score",
+        "topic_hints"
+      ],
+      "doctrine": "de buitenwereld mag rommelig zijn, de interne pipeline niet"
+    },
+    {
+      "name": "source_hierarchy",
+      "purpose": "Geef bronkwaliteit gewicht voordat er interpretatie of trade plaatsvindt.",
+      "tiers": {
+        "tier_1": "primaire bronnen: officiële instanties, centrale banken, rechtbankdocumenten, verkiezingsinstanties, beursfilings, directe bedrijfsmededelingen",
+        "tier_2": "betrouwbare verslaggeving: grote persagentschappen en gevestigde media met bronvermelding",
+        "tier_3": "secundaire interpretatie: analisten, blogs, opinion, samenvattingen",
+        "tier_4": "geruchten en sociale signalen: onbevestigde posts, screenshots, speculatie, anonieme claims"
+      },
+      "hard_rule": "Tier 4 mag hoogstens signaleren maar nooit blind execution triggeren."
+    },
+    {
+      "name": "relevance_filter",
+      "purpose": "Bepaal of een bericht relevant is voor een verhandelbare prediction market én voor resolutie.",
+      "dimensions": [
+        "semantic_relevance",
+        "time_relevance",
+        "resolution_relevance"
+      ],
+      "questions": [
+        "gaat dit bericht over een onderwerp dat in het marktuniversum valt?",
+        "is het nieuws nog vers genoeg om edge te bevatten?",
+        "verandert dit nieuws werkelijk de kans op resolutie of is het alleen context?"
+      ],
+      "failure_mode_to_avoid": "de bot verdrinkt in ruis of mist kansen door te grove filtering"
+    },
+    {
+      "name": "market_mapping_engine",
+      "purpose": "Koppel relevant nieuws aan de juiste prediction market(s).",
+      "mapping_steps": [
+        "bepaal event of onderwerpcluster",
+        "selecteer daarna pas de exacte markt op deadline, resolutietekst, liquiditeit en operationele bruikbaarheid"
+      ],
+      "questions": [
+        "welke markt hoort exact bij deze gebeurtenis?",
+        "welke deadline is relevant?",
+        "past de resolutieformulering werkelijk bij dit nieuws?",
+        "is de markt liquide genoeg en open voor handel?"
+      ],
+      "critical_risk": "verkeerd mappen = handelen in de verkeerde markt = fundamentele systeemfout"
+    },
+    {
+      "name": "resolution_understanding_layer",
+      "purpose": "Interpreteer de officiële marktresolutie alsof het een juridisch contract is.",
+      "why_it_is_critical": "Niet de logische headline telt, maar alleen wat volgens de markttekst als YES of NO resolved.",
+      "questions": [
+        "wat moet er precies gebeuren om YES waar te maken?",
+        "welke bron bepaalt de uitkomst?",
+        "geldt een exacte deadline?",
+        "tellen voorlopige cijfers of alleen officiële bevestigingen?",
+        "zijn woorden als announced, implemented, signed, published, confirmed equivalent?",
+        "hoe wordt omgegaan met vertraging of betwisting?"
+      ],
+      "hard_rule": "geen trade als resolution understanding onvoldoende zeker is"
+    },
+    {
+      "name": "probability_engine",
+      "purpose": "Bereken een gestructureerde kansupdate gegeven nieuws plus marktcontext.",
+      "model_role": "geen magische voorspeller, maar een gecontroleerde kansupdate-machine",
+      "required_questions": [
+        "wat is de kernclaim van het nieuws?",
+        "is deze claim bevestigend, ontkennend of neutraal voor de markt?",
+        "hoe direct raakt dit de resolutiecriteria?",
+        "hoe betrouwbaar is de bron?",
+        "is dit nieuw bewijs of herhaling?",
+        "hoe groot is de kans dat de markt dit al heeft ingeprijsd?",
+        "wat is de nieuwe model probability?",
+        "hoe zeker is de bot van deze update?"
+      ],
+      "required_outputs": [
+        "model_probability",
+        "confidence_in_estimate",
+        "source_quality",
+        "novelty_score",
+        "resolution_match_strength",
+        "reasoning_summary"
+      ]
+    },
+    {
+      "name": "market_state_analyzer",
+      "purpose": "Beoordeel of de markt praktisch verhandelbaar is en of theoretische edge netto overblijft.",
+      "inputs": [
+        "best_bid",
+        "best_ask",
+        "spread",
+        "depth_near_top_of_book",
+        "recent_price_velocity",
+        "estimated_slippage",
+        "liquidity_quality"
+      ],
+      "key_insight": "theoretische edge is waardeloos als execution de volledige edge opeet"
+    },
+    {
+      "name": "edge_engine",
+      "purpose": "Zet model probability en market state om in een netto handelsbeslissing.",
+      "raw_formula": "raw_edge = model_probability - market_probability",
+      "net_formula": "net_edge = raw_edge - fees - slippage - uncertainty_penalty - execution_risk_penalty",
+      "must_consider": [
+        "model_probability",
+        "current_market_probability",
+        "spread",
+        "slippage",
+        "fees",
+        "source_uncertainty",
+        "resolution_uncertainty",
+        "confidence_penalty",
+        "portfolio exposure",
+        "time_to_resolution"
+      ],
+      "minimum_conditions": [
+        "minimum_raw_edge",
+        "minimum_net_edge",
+        "minimum_confidence",
+        "minimum_source_reliability",
+        "maximum_resolution_uncertainty",
+        "minimum_orderbook_depth"
+      ]
+    },
+    {
+      "name": "execution_engine",
+      "purpose": "Voer alleen goedgekeurde trades uit op Polymarket met prijsdiscipline.",
+      "responsibilities": [
+        "kies ordertype",
+        "bepaal order aggressiveness",
+        "bereken positieomvang",
+        "plaats order via adapter",
+        "monitor partial fills",
+        "voorkom duplicate orders",
+        "cancel/replace wanneer nodig",
+        "log volledige execution context"
+      ],
+      "tension": "snelheid versus prijsdiscipline",
+      "execution_doctrine": "Niet elke theoretische edge hoeft geëxecuteerd te worden."
+    },
+    {
+      "name": "risk_and_guardrail_layer",
+      "purpose": "Geef veto op trades wanneer interpretatie, bronkwaliteit, marktkwaliteit of exposure onvoldoende is.",
+      "design_rule": "Guardrails staan los van de intelligentielaag en mogen altijd veto uitspreken.",
+      "guardrails": [
+        "niet traden op onofficiële of onbevestigde bronnen",
+        "niet traden bij onduidelijke resolutie",
+        "niet traden bij te grote spread",
+        "niet traden boven max exposure per eventcluster",
+        "niet traden wanneer related markets al teveel risico dragen",
+        "niet traden als headline waarschijnlijk al ingeprijsd is",
+        "niet traden bij lage model confidence",
+        "niet traden bij tegenstrijdige signalen uit betrouwbare bronnen",
+        "niet traden als markt vlak voor resolutie erratisch is"
+      ],
+      "philosophy": "Een goede bot wordt mede gedefinieerd door hoe vaak hij terecht niet handelt."
+    },
+    {
+      "name": "position_monitor_and_exit_logic",
+      "purpose": "Blijf de trade beoordelen op thesis-validity na entry.",
+      "monitor_inputs": [
+        "current_pnl",
+        "updated_implied_probability",
+        "new_relevant_news",
+        "time_to_resolution",
+        "orderbook deterioration",
+        "confidence_change",
+        "portfolio_cluster_exposure"
+      ],
+      "exit_modes": [
+        "take profit bij snelle repricing",
+        "force exit als originele thesis ongeldig wordt",
+        "reduce only bij oplopende onzekerheid",
+        "time exit als edge niet materialiseert",
+        "flatten voor risk events of onbetrouwbare phase change"
+      ],
+      "mental_model": "exit niet op candle-structuur, maar op thesis validity en completion van price discovery"
+    },
+    {
+      "name": "logging_audit_replay",
+      "purpose": "Maak elke beslissing volledig reconstrueerbaar.",
+      "must_log": [
+        "welk bericht binnenkwam",
+        "wanneer het binnenkwam",
+        "hoe het geclassificeerd werd",
+        "welke markt gekoppeld werd",
+        "hoe resolutie gelezen werd",
+        "welke model_probability is berekend",
+        "wat de marktprijs en orderboekstaat was",
+        "welke edge gezien werd",
+        "waarom wel of niet werd gehandeld",
+        "hoe de positie daarna verliep"
+      ],
+      "replay_goal": "speel historische nieuwssequenties af alsof ze live binnenkomen om decision quality te testen zonder future leakage"
+    }
+  ],
+
+  "internal_data_contracts": {
+    "normalized_news_event": {
+      "fields": [
+        "event_id",
+        "received_at",
+        "source_name",
+        "source_tier",
+        "source_reliability_score",
+        "headline",
+        "summary",
+        "raw_text",
+        "language",
+        "topic_hints",
+        "novelty_hint",
+        "url"
+      ]
+    },
+    "mapped_market_candidate": {
+      "fields": [
+        "market_id",
+        "market_title",
+        "market_category",
+        "resolution_text",
+        "deadline",
+        "liquidity_score",
+        "mapping_confidence",
+        "event_cluster_id"
+      ]
+    },
+    "probability_assessment": {
+      "fields": [
+        "model_probability",
+        "confidence_score",
+        "resolution_match_score",
+        "novelty_score",
+        "source_quality_score",
+        "already_priced_risk",
+        "reasoning_summary"
+      ]
+    },
+    "trade_decision": {
+      "fields": [
+        "market_id",
+        "raw_edge",
+        "net_edge",
+        "execution_allowed",
+        "guardrail_status",
+        "position_size",
+        "decision_reason"
+      ]
+    }
+  },
+
+  "event_pipeline": {
+    "old_oclw_pipeline": "market_data -> indicators -> signal -> order",
+    "new_pipeline": "news -> normalization -> relevance_filter -> market_mapping -> resolution_check -> probability_update -> market_state_check -> edge_engine -> risk_veto -> execution -> monitoring"
+  },
+
+  "polymarket_adapter": {
+    "required_capabilities": [
+      "fetch market metadata",
+      "fetch resolution text",
+      "fetch orderbook",
+      "fetch prices and depth",
+      "place yes/no side orders",
+      "monitor order status",
+      "record fills",
+      "wallet signing / auth integration"
+    ],
+    "adapter_goal": "Maak van Polymarket een execution target binnen OCLW zonder de rest van de infrastructuur te herschrijven."
+  },
+
+  "portfolio_and_risk_model": {
+    "position_sizing": {
+      "logic": "Prediction market risk is gekoppeld aan share price en exposure, niet aan klassieke leveraged stop-loss structuur.",
+      "starter_rules": [
+        "max 2 percent capital per trade",
+        "max 5 percent capital per event cluster",
+        "max 20 percent total market exposure"
+      ]
+    },
+    "event_clusters": {
+      "purpose": "Voorkom correlated risk over meerdere markten die op dezelfde gebeurtenis wedden.",
+      "examples": [
+        "verkiezingsuitslagen",
+        "centrale bankbesluiten",
+        "crypto regelgeving",
+        "macro releases"
+      ]
+    },
+    "false_news_protection": [
+      "bronverificatie",
+      "cross confirmation",
+      "optionele korte wachttijd voor bevestiging",
+      "harder trade thresholds bij lagere bronkwaliteit"
+    ],
+    "liquidity_management": [
+      "spread controleren",
+      "depth op eerste prijsniveaus controleren",
+      "slippage schatten",
+      "trade skippen als uitvoerbaarheid te slecht is"
+    ],
+    "portfolio_construction": {
+      "goal": "Niet afhankelijk zijn van één markt of één eventtype",
+      "possible_buckets": [
+        "crypto prijs events",
+        "macro economische releases",
+        "politieke ontwikkelingen",
+        "regelgeving rond technologie of financiële markten"
+      ]
+    }
+  },
+
+  "time_and_speed_doctrine": {
+    "real_edge_components": [
+      "snellere informatieverwerking",
+      "correcte interpretatie",
+      "snelle maar gedisciplineerde execution"
+    ],
+    "important_note": "Snelheid alleen is niet genoeg; interpretatie en resolution understanding zijn even belangrijk.",
+    "scenario_analysis": {
+      "allowed": true,
+      "purpose": "Vooraf scenario’s definiëren zodat de bot sneller reageert als gestructureerde events optreden."
+    },
+    "time_to_resolution_is_key": true,
+    "time_to_resolution_note": "De impact van nieuws moet worden gewogen tegen hoe dichtbij de marktresolutie ligt."
+  },
+
+  "development_strategy": {
+    "phases": [
+      {
+        "phase": 1,
+        "name": "infrastructure_first",
+        "goal": "Bouw Polymarket adapter, marktdata-interface en basis event pipeline zonder complexe AI."
+      },
+      {
+        "phase": 2,
+        "name": "rule_based_events",
+        "goal": "Laat het systeem reageren op eenvoudige, duidelijk interpreteerbare events zoals officiële macro releases."
+      },
+      {
+        "phase": 3,
+        "name": "ai_interpretation",
+        "goal": "Voeg taalmodel-gedreven interpretatie toe voor complexere headlines en kansupdates."
+      },
+      {
+        "phase": 4,
+        "name": "optimization_and_scaling",
+        "goal": "Meet welke bronnen, marktcategorieën en eventtypes de beste netto edge leveren."
+      }
+    ],
+    "build_order_recommendation": [
+      "normalized event schema",
+      "source hierarchy",
+      "market universe config",
+      "polymarket adapter",
+      "relevance filter",
+      "market mapping",
+      "resolution parser",
+      "simple rule-based probability engine",
+      "edge engine",
+      "risk veto",
+      "position monitoring",
+      "replay tooling"
+    ]
+  },
+
+  "market_universe_policy": {
+    "principle": "Start niet met alle Polymarket events. Beperk tot een gecontroleerd universum.",
+    "config_should_define": [
+      "welke categorieën verhandelbaar zijn",
+      "welke markten voldoende liquiditeit hebben",
+      "welke deadlines acceptabel zijn",
+      "welke markten uitgesloten zijn"
+    ]
+  },
+
+  "continuous_improvement": {
+    "must_measure": [
+      "welke bronnen de beste signalen opleveren",
+      "welke eventtypes de hoogste netto edge hebben",
+      "waar trades ten onrechte zijn genomen",
+      "waar guardrails trades terecht hebben tegengehouden",
+      "waar mapping fouten optreden",
+      "waar resolution parsing te zwak is"
+    ],
+    "goal": "verbeter specifieke modules zonder de rest van het systeem te breken"
+  },
+
+  "cursor_directives": {
+    "role_for_cursor": "Gebruik deze context als architectuur- en ontwerpdoctrine voor het retrofitten van OCLW_bot naar een news-driven prediction market trading system.",
+    "instructions": [
+      "behoud bestaande OCLW infrastructuur waar generiek bruikbaar",
+      "verplaats strategie-intelligentie van price-driven naar event-driven",
+      "introduceer nieuwe modules als losgekoppelde componenten met duidelijke interfaces",
+      "laat guardrails en risk veto boven AI-uitvoer staan",
+      "bouw eerst simpele rule-based interpretatie voor testbaarheid",
+      "maak alle beslissingen auditbaar en replaybaar",
+      "vermijd monolithische scripts",
+      "scheid resolution understanding expliciet van general AI interpretation",
+      "behandel prediction market execution als aparte adapterlaag"
+    ],
+    "preferred_output_style": [
+      "modulaire Python bestanden",
+      "duidelijke interfaces en dataclasses of pydantic models",
+      "config-driven gedrag",
+      "testbare componenten",
+      "geen verborgen side effects",
+      "volledige logging van beslissingstraject"
+    ]
+  }
+}

@@ -1,0 +1,158 @@
+## Hoofdstuk 2 — Hoe Prediction Markets Prijzen Werken
+
+Om een AI-newsbot voor Polymarket te bouwen, moet eerst duidelijk zijn **hoe prijzen in prediction markets tot stand komen**. Anders dan bij forex of aandelen gaat het hier niet om de waarde van een bedrijf of een valuta, maar om **de waarschijnlijkheid dat een specifieke gebeurtenis plaatsvindt**.
+
+Prediction markets zijn in essentie een **markt voor kansen**.
+
+Wanneer je in een traditionele markt handelt, koop je bijvoorbeeld een aandeel omdat je denkt dat de prijs zal stijgen. In een prediction market koop je een aandeel omdat je denkt dat **de kans op een gebeurtenis groter is dan de markt denkt**.
+
+### Odds als kans
+
+In Polymarket wordt een gebeurtenis meestal weergegeven met twee mogelijke uitkomsten:
+
+* **YES** – de gebeurtenis gebeurt
+* **NO** – de gebeurtenis gebeurt niet
+
+Elke uitkomst heeft een prijs tussen **$0 en $1**.
+
+Die prijs vertegenwoordigt direct een **implied probability**.
+
+Bijvoorbeeld:
+
+| YES prijs | Marktinschatting |
+| --------- | ---------------- |
+| $0.20     | 20% kans         |
+| $0.45     | 45% kans         |
+| $0.70     | 70% kans         |
+| $0.90     | 90% kans         |
+
+Als een gebeurtenis daadwerkelijk plaatsvindt, wordt een YES-share uiteindelijk **$1 waard**. Als de gebeurtenis niet plaatsvindt, wordt de share **$0 waard**.
+
+De winst of verlies van een trade hangt dus volledig af van het verschil tussen:
+
+* **de prijs waar je koopt**
+* **de uiteindelijke resolutie van de gebeurtenis**
+
+### Voorbeeld van een trade
+
+Stel er bestaat een markt:
+
+**“Zal Bitcoin vandaag boven $80.000 sluiten?”**
+
+De huidige prijs:
+
+YES = **$0.42**
+
+Dat betekent dat de markt denkt dat de kans ongeveer **42%** is.
+
+Als jouw model zegt dat de kans **65%** is, dan is de markt volgens jouw analyse **ondergeprijsd**.
+
+Je kunt dan YES kopen voor $0.42.
+
+Als later meer traders dezelfde conclusie trekken en de prijs stijgt naar bijvoorbeeld $0.60, kun je je positie verkopen en winst nemen zonder te wachten tot de resolutie van de gebeurtenis.
+
+### Orderbooks en prijsbeweging
+
+Polymarket werkt met een **orderboek**, vergelijkbaar met een crypto-exchange.
+
+Er zijn:
+
+* **biedingen (bids)** – mensen die willen kopen
+* **aanbiedingen (asks)** – mensen die willen verkopen
+
+De prijs beweegt wanneer:
+
+* nieuwe orders binnenkomen
+* bestaande orders worden gevuld
+* traders hun verwachtingen aanpassen
+
+Dit betekent dat markten niet altijd perfect efficiënt zijn. Soms blijft een prijs even hangen terwijl nieuwe informatie al beschikbaar is.
+
+Voor een AI-newsbot is dit precies het moment waar de strategie op gericht is.
+
+### Waar inefficiënties ontstaan
+
+Prediction markets zijn vaak minder efficiënt dan grote financiële markten. Daar zijn meerdere redenen voor:
+
+**1. Lagere liquiditeit**
+
+Veel markten hebben relatief weinig volume. Daardoor kan het langer duren voordat nieuwe informatie volledig in de prijs wordt verwerkt.
+
+**2. Menselijke interpretatie**
+
+Nieuws moet eerst gelezen en geïnterpreteerd worden. Traders kunnen verschillende conclusies trekken uit dezelfde informatie.
+
+**3. Fragmentatie van informatie**
+
+Niet iedereen ziet hetzelfde nieuws op hetzelfde moment. Sommige bronnen worden sneller opgepikt dan andere.
+
+**4. Emotion en sentiment**
+
+Veel deelnemers handelen op basis van overtuiging of opinie in plaats van systematische analyse.
+
+Voor een geautomatiseerd systeem creëert dit kansen.
+
+### Het concept van “edge”
+
+Een tradingstrategie heeft alleen waarde wanneer er een **edge** bestaat. Dat betekent dat je systematisch situaties vindt waarin de marktprijs afwijkt van de werkelijke kans.
+
+In een prediction market kan dat eenvoudig worden geformuleerd:
+
+```
+Edge = Model probability – Market probability
+```
+
+Als jouw model zegt:
+
+kans = 70%
+
+en de markt prijst:
+
+kans = 50%
+
+dan heb je een **20% informatievoordeel**.
+
+Een tradingbot kan dan automatisch een positie openen.
+
+### Waarom snelheid belangrijk is
+
+De meeste inefficiënties in prediction markets bestaan slechts kort.
+
+Wanneer belangrijk nieuws verschijnt:
+
+1. een paar traders reageren direct
+2. daarna volgen andere traders
+3. uiteindelijk past de marktprijs zich volledig aan
+
+Het doel van een newsbot is om **zo vroeg mogelijk in deze keten te handelen**.
+
+Daarom bestaat de strategie uit drie kritische stappen:
+
+* **nieuws detecteren**
+* **impact analyseren**
+* **direct handelen**
+
+Als deze drie stappen sneller gebeuren dan bij menselijke traders, ontstaat er een structureel voordeel.
+
+### Prediction markets als informatie-aggregator
+
+Prediction markets worden vaak gezien als een manier om collectieve kennis te bundelen. De marktprijs weerspiegelt de gecombineerde verwachting van alle deelnemers.
+
+Maar dit proces werkt alleen optimaal wanneer alle informatie onmiddellijk wordt verwerkt.
+
+In werkelijkheid is er altijd een kleine vertraging tussen:
+
+* het moment waarop informatie verschijnt
+* het moment waarop de markt deze volledig verwerkt
+
+Een AI-newsbot probeert precies in dat tijdsvenster te opereren.
+
+### De rol van het model
+
+Het model in een news-driven tradingbot hoeft niet perfect te zijn. Het hoeft alleen **systematisch iets sneller of nauwkeuriger te reageren dan de gemiddelde trader**.
+
+Dat betekent dat de bot niet elke gebeurtenis correct hoeft te voorspellen. Het doel is simpelweg om vaak genoeg te handelen wanneer de marktprijs duidelijk afwijkt van een redelijke kansinschatting.
+
+Over veel trades heen kan dit leiden tot een positieve verwachtingswaarde.
+
+In het volgende hoofdstuk wordt beschreven hoe een systeemarchitectuur kan worden ontworpen die dit proces volledig automatiseert. Daar wordt uitgelegd hoe nieuwsbronnen, analysemodellen en tradinglogica samenkomen in één geïntegreerde AI-newsbot.

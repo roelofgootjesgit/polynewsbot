@@ -1,0 +1,166 @@
+## Hoofdstuk 4 — Integratie met jouw OCLW Bot
+
+Nu de architectuur van de AI-newsbot duidelijk is, komt de praktische vraag: **hoe bouw je dit zonder opnieuw te beginnen?** Je hebt al een tradinginfrastructuur in ontwikkeling met je OCLW-bot. Dat systeem bevat waarschijnlijk al belangrijke componenten zoals data-handling, risk-management, configuratiestructuren en logging. In plaats van een compleet nieuwe codebasis te bouwen, is het verstandiger om de bestaande machinekamer van OCLW te behouden en daarop een nieuwe “event-driven” laag te bouwen.
+
+De integratie draait daarom om één kernprincipe: **scheid de trading-infrastructuur van de trading-intelligentie**. In je huidige bot is de intelligentie waarschijnlijk gebaseerd op prijsstructuren, indicatoren of orderflow. Voor een prediction-market bot verandert die intelligentie volledig, maar de infrastructuur daaromheen kan grotendeels blijven bestaan.
+
+### 4.1 Wat uit OCLW herbruikbaar is
+
+Een moderne tradingbot bestaat meestal uit een aantal generieke systemen die niet afhankelijk zijn van het type strategie. Deze onderdelen zijn vaak goed herbruikbaar. Denk bijvoorbeeld aan:
+
+**De scheduler of event loop.**
+De kern van elke tradingbot is een proces dat continu draait en taken uitvoert: data ophalen, signalen verwerken, orders monitoren. Die infrastructuur is bij een newsbot nog steeds nodig. Het enige verschil is dat het triggersysteem nu niet alleen op tijdintervallen draait, maar ook op binnenkomende nieuws-events.
+
+**Het risicomanagementsysteem.**
+Regels zoals maximale exposure, portfolio-limieten, cooldown-periodes en fail-safe-mechanismen zijn universeel. Of je nu forex handelt of prediction markets, je wilt voorkomen dat één fout signaal een groot deel van je kapitaal riskeert.
+
+**Configuratiestructuur.**
+Als OCLW werkt met configuratiebestanden (bijvoorbeeld YAML of JSON) om parameters te beheren, kun je die structuur blijven gebruiken. Nieuwe parameters kunnen eenvoudig worden toegevoegd, zoals minimale edge-drempels, bronprioriteiten of maximale posities per eventcluster.
+
+**Logging en monitoring.**
+Je hebt al een logica nodig die alle beslissingen en transacties opslaat. Voor een newsbot is dat zelfs nog belangrijker, omdat elke trade moet kunnen worden teruggeleid naar een specifieke nieuwsbron en interpretatie.
+
+**Guardrails.**
+In je bestaande systeem zitten waarschijnlijk al veiligheidsregels die voorkomen dat het systeem oncontroleerbare acties uitvoert. Dit principe moet juist behouden blijven. In een newsbot zijn guardrails zelfs nog belangrijker, omdat tekstinterpretatie fouten kan bevatten.
+
+Kort gezegd: **de infrastructuur van OCLW kan de machinekamer blijven**.
+
+### 4.2 Wat moet worden vervangen
+
+Hoewel de basisstructuur bruikbaar is, moet een aantal onderdelen van je huidige bot worden vervangen. De belangrijkste daarvan is de **signaalengine**.
+
+In een forex- of cryptobot is de signaalengine meestal gebaseerd op prijsdata: candles, indicatoren, orderflow of statistische patronen. In een newsbot is dat fundamenteel anders. De signalen komen niet meer uit prijsstructuren, maar uit **informatie-events**.
+
+De oude signaalengine moet daarom worden vervangen door een nieuwe keten van modules:
+
+1. nieuwsdetectie
+2. relevantiefilter
+3. markt-mapping
+4. resolutie-interpretatie
+5. kansberekening
+6. edge-beslissing
+
+Pas daarna komt een signaal dat vergelijkbaar is met een klassiek trading-signaal.
+
+Dit betekent dat de signaalengine in feite verandert van een **price-driven systeem** naar een **event-driven systeem**.
+
+### 4.3 De Polymarket execution adapter
+
+Een tweede grote verandering zit in de execution-laag. OCLW is waarschijnlijk gebouwd om orders te sturen naar een forex-broker of een crypto-exchange. Polymarket werkt anders. In plaats van een klassiek orderboek met assetprijzen handel je hier in **YES/NO-shares** die de kans op een gebeurtenis vertegenwoordigen.
+
+Daarom moet een nieuwe adapter worden gebouwd die de volgende taken uitvoert:
+
+* verbinding maken met de Polymarket API
+* orderboekinformatie ophalen
+* marktprijzen en volumes uitlezen
+* orders signeren via een wallet
+* koop- en verkooporders plaatsen
+* orderstatus monitoren
+* fills registreren in het logboek
+
+Conceptueel lijkt dit sterk op een exchange-adapter, maar de logica moet rekening houden met het specifieke prijsmodel van prediction markets.
+
+### 4.4 De event-pipeline
+
+De kern van de nieuwe integratie is de **event-pipeline**. Deze pipeline vormt de nieuwe signaalstroom van het systeem.
+
+In een traditionele tradingbot ziet de pipeline er vaak zo uit:
+
+```
+market data → indicatoren → signaal → order
+```
+
+Voor de AI-newsbot verandert dit naar:
+
+```
+nieuws → relevantie → marktselectie → resolutiecheck → kansupdate → edge → order
+```
+
+De bestaande OCLW-scheduler kan deze pipeline aansturen. In plaats van elke paar seconden candles te analyseren, verwerkt hij nu binnenkomende nieuws-events.
+
+### 4.5 Configuratie van markten
+
+Een praktische stap bij de integratie is het definiëren van een **marktuniversum**. Prediction markets kunnen honderden verschillende events bevatten, maar het is niet verstandig om een bot meteen op alles los te laten.
+
+Het systeem moet daarom een configuratie hebben waarin wordt vastgelegd:
+
+* welke markten mogen worden verhandeld
+* welke categorieën worden gevolgd
+* welke deadlines relevant zijn
+* welke markten voldoende liquiditeit hebben
+
+Bijvoorbeeld:
+
+* crypto-prijs-events
+* macro-economische releases
+* politieke gebeurtenissen
+* regelgeving rond crypto of technologie
+
+Door het universum te beperken kan de bot zich focussen op markten waar de kans op informatie-inefficiënties het grootst is.
+
+### 4.6 Integratie van de news-engine
+
+De news-engine vormt de nieuwe “sensor” van het systeem. Deze engine kan draaien als een aparte service die continu nieuws verzamelt en analyseert. Zodra een relevante gebeurtenis wordt gedetecteerd, stuurt deze service een event naar de OCLW-pipeline.
+
+Het voordeel van deze aanpak is dat de tradingengine en de newsengine los van elkaar blijven. De newsengine kan worden uitgebreid met nieuwe bronnen zonder dat de tradinglogica hoeft te veranderen.
+
+Een typische workflow kan er dan zo uitzien:
+
+1. newsengine detecteert een nieuwe headline
+2. headline wordt geanalyseerd en geclassificeerd
+3. relevant event wordt doorgestuurd naar de tradingpipeline
+4. tradingpipeline bepaalt of een trade gerechtvaardigd is
+5. execution-adapter plaatst een order
+
+Door deze scheiding blijft het systeem overzichtelijk en modulair.
+
+### 4.7 Event-clusters en portfolio-risico
+
+Een extra concept dat bij prediction markets belangrijk wordt, is **event-clustering**. Veel markten zijn namelijk sterk met elkaar verbonden. Bijvoorbeeld meerdere markten over dezelfde verkiezing of verschillende prijsniveaus van dezelfde asset.
+
+De bot moet begrijpen dat posities in zulke markten vaak hetzelfde risico vertegenwoordigen. Daarom moet de integratie met OCLW een portfoliomanager bevatten die kan zien wanneer meerdere posities eigenlijk op hetzelfde nieuws wedden.
+
+Een simpele regel kan bijvoorbeeld zijn dat de bot nooit meer dan een bepaald percentage van het kapitaal op één eventcluster mag inzetten.
+
+### 4.8 Monitoring en debugging
+
+Tijdens de eerste fases van ontwikkeling is monitoring essentieel. De bot moet niet alleen trades uitvoeren, maar ook inzicht geven in zijn eigen besluitvorming.
+
+Een goede integratie zorgt ervoor dat elk nieuws-event wordt gelogd met:
+
+* bron van het nieuws
+* classificatie van relevantie
+* gekoppelde markt
+* berekende kansupdate
+* marktprijs op dat moment
+* uiteindelijke beslissing van de edge-engine
+
+Met deze informatie kun je achteraf analyseren of het model goed reageerde op bepaalde gebeurtenissen.
+
+### 4.9 De ontwikkelingsstrategie
+
+De integratie met OCLW kan het beste in stappen gebeuren. In plaats van alles tegelijk te bouwen, is het verstandiger om de ontwikkeling op te delen in fases.
+
+**Fase één: infrastructuur.**
+De execution-adapter en marktdata-interface worden gebouwd. De bot kan markten lezen en orders plaatsen, maar doet nog geen complexe analyse.
+
+**Fase twee: rule-based events.**
+Het systeem reageert op eenvoudige, duidelijk interpreteerbare gebeurtenissen, zoals officiële macro-economische releases.
+
+**Fase drie: AI-interpretatie.**
+De newsengine gebruikt taalmodellen om complexere headlines te interpreteren en kansupdates te berekenen.
+
+**Fase vier: optimalisatie.**
+De bot leert welke markten en nieuwsbronnen de grootste edge opleveren en kan daar meer kapitaal op concentreren.
+
+Door deze gefaseerde aanpak blijft het project beheersbaar en kun je fouten in een vroeg stadium ontdekken.
+
+### 4.10 Het eindresultaat van de integratie
+
+Wanneer deze integratie volledig werkt, verandert je OCLW-bot van een traditionele tradingbot in een **event-driven information trading system**.
+
+De bot handelt dan niet langer op prijsstructuren, maar op **informatie-inefficiënties**. Hij detecteert nieuws, vertaalt dat naar kansveranderingen en vergelijkt die kans met de prijs in de prediction market.
+
+Als het systeem correct is gebouwd, kan het sneller reageren dan menselijke traders en daardoor profiteren van momenten waarop de markt nog niet volledig heeft gereageerd op nieuwe informatie.
+
+In het volgende hoofdstuk wordt een van de belangrijkste factoren besproken die het succes van zo’n systeem bepalen: **snelheid en informatievoorsprong**. Daar wordt uitgelegd waarom milliseconden verschil kunnen maken en hoe bronkwaliteit en interpretatiesnelheid bepalen of een newsbot werkelijk een edge heeft.

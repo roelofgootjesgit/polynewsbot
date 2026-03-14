@@ -1,0 +1,600 @@
+## Hoofdstuk 3 — Architectuur van de AI News Bot
+
+Nu het concept helder is en we begrijpen hoe prediction markets hun prijzen vormen, komt de belangrijkste vraag: **hoe bouw je een systeem dat dit idee echt uitvoerbaar maakt?** Een goed idee op papier is nog geen werkende tradingmachine. Het verschil tussen een slimme gedachte en een winstgevend systeem zit bijna altijd in de architectuur.
+
+Bij een AI-newsbot is die architectuur nog belangrijker dan bij veel andere tradingbots. Een klassieke bot die werkt op technische analyse hoeft vooral marktdata goed te verwerken, regels toe te passen en orders te plaatsen. Een news-driven prediction bot moet veel meer doen. Hij moet informatie uit de buitenwereld opnemen, deze op relevantie beoordelen, begrijpen welke markt erbij hoort, de impact op de waarschijnlijkheid van een gebeurtenis inschatten, die kans afzetten tegen de marktprijs, en pas daarna besluiten of een trade gerechtvaardigd is.
+
+Dat betekent dat we geen simpel script bouwen, maar een **meerdelig systeem met duidelijke modules**. Elke module heeft een taak, en alleen als die taak strak is gedefinieerd, blijft het systeem beheersbaar, schaalbaar en veilig.
+
+De architectuur van deze bot kan het best worden gezien als een keten van beslissingen. Die keten ziet er in essentie zo uit:
+
+**informatie komt binnen → informatie wordt gefilterd → informatie wordt gekoppeld aan een markt → impact wordt beoordeeld → edge wordt berekend → trade wordt uitgevoerd → positie wordt gemonitord**
+
+Dat klinkt eenvoudig, maar elk van die stappen bevat valkuilen. Daarom werken we dit hoofdstuk uit als een volledig systeemontwerp.
+
+---
+
+### 3.1 Het architectuurprincipe: van ruwe informatie naar executable trade
+
+Het belangrijkste ontwerpprincipe is dat de bot **niet direct handelt op nieuws**, maar op een reeks gecontroleerde interpretatiestappen. Dat is cruciaal. Veel slechte newsbots maken de fout om te denken:
+
+“headline bevat bepaald woord → koop YES”
+
+Dat is te primitief. Nieuws is ruisachtig, dubbelzinnig en soms zelfs misleidend. Een bruikbare architectuur moet daarom uit meerdere lagen bestaan, zodat het systeem pas aan het eind van de keten een trade mag plaatsen.
+
+Je kunt de architectuur zien als een filtersysteem:
+
+* de eerste laag beslist: **is dit nieuws überhaupt relevant?**
+* de tweede laag beslist: **bij welke markt hoort dit?**
+* de derde laag beslist: **verandert dit werkelijk de kans op resolutie?**
+* de vierde laag beslist: **is de marktprijs nog fout genoeg om op te handelen?**
+* de vijfde laag beslist: **mag er volgens risicoregels een positie worden geopend?**
+
+Pas als alle lagen groen licht geven, ontstaat een order.
+
+Dat is belangrijk, omdat bij prediction markets de echte fout vaak niet zit in execution, maar in **verkeerde interpretatie**. Je kunt technisch perfect orders plaatsen en toch structureel verliezen als je nieuws te simpel vertaalt.
+
+---
+
+## 3.2 Overzicht van de kernmodules
+
+De AI-newsbot bestaat idealiter uit de volgende hoofdmodules:
+
+1. **News Ingestion Layer**
+2. **Relevance Filter**
+3. **Market Mapping Engine**
+4. **Resolution Understanding Layer**
+5. **Probability Engine**
+6. **Market State Analyzer**
+7. **Edge Engine**
+8. **Execution Engine**
+9. **Risk & Guardrail Layer**
+10. **Position Monitor & Exit Logic**
+11. **Logging / Audit / Replay System**
+
+Dit zijn geen luxe-onderdelen, maar noodzakelijke bouwstenen. Juist omdat het systeem op informatie handelt in plaats van op kale candles, moet achteraf ook exact te reconstrueren zijn **waarom** een trade werd genomen.
+
+Laten we deze modules één voor één uitwerken.
+
+---
+
+## 3.3 News Ingestion Layer
+
+Alles begint bij informatie. Zonder snelle en betrouwbare instroom van nieuws heeft de bot geen bestaansrecht. De news ingestion layer is daarom de buitenste sensorlaag van het systeem.
+
+Deze module heeft één taak: **relevante informatie zo snel mogelijk binnenhalen en in een gestandaardiseerd formaat aanbieden aan de rest van de bot**.
+
+Dat klinkt eenvoudig, maar informatie komt in verschillende vormen:
+
+* headlines van nieuwsfeeds
+* artikelen
+* officiële persberichten
+* verklaringen van centrale banken
+* economische releases
+* posts van relevante accounts
+* updates van overheidsinstanties
+* marktgeruchten
+* transcriptregels van speeches of interviews
+
+Een robuuste ingestion layer moet met al die formaten om kunnen gaan. Dat betekent dat deze laag niet alleen data ophaalt, maar ook normaliseert.
+
+Voor elke nieuwsingang wil je minimaal vastleggen:
+
+* timestamp van ontvangst
+* originele bron
+* type bron
+* titel/headline
+* body of samenvatting
+* eventuele URL of identifier
+* taal
+* prioriteitsscore
+* betrouwbaarheidsscore van de bron
+
+Daarmee creëer je een uniforme informatiestroom waar de rest van het systeem op kan werken.
+
+De reden dat dit zo belangrijk is, is eenvoudig: de bot mag niet afhankelijk zijn van een rommelige mix van inputvormen. Als de rest van de pipeline telkens aparte uitzonderingen moet verwerken voor verschillende bronnen, wordt het systeem broos en foutgevoelig.
+
+De ingestion layer moet dus eigenlijk werken als een converter van de chaotische buitenwereld naar een intern standaardobject, bijvoorbeeld conceptueel zoiets als:
+
+* event_id
+* source
+* received_at
+* headline
+* summary
+* raw_text
+* confidence_source
+* topic_hints
+
+Nog zonder code te gaan schrijven is dit al een belangrijk ontwerpbesluit: **de buitenwereld mag rommelig zijn, de interne pipeline niet**.
+
+---
+
+## 3.4 Bronhiërarchie: niet elk nieuws is gelijk
+
+Een cruciaal onderdeel van deze laag is bronweging. Niet elk bericht heeft dezelfde waarde. In een prediction market kan een officiële verklaring van een ministerie zwaarder wegen dan twintig snelle reposts op sociale media.
+
+Daarom moet de ingestielaag niet neutraal zijn. Hij moet begrijpen dat bronnen in klassen vallen, bijvoorbeeld:
+
+**Tier 1 — primaire bronnen**
+Officiële instanties, persberichten, rechtbankdocumenten, centrale banken, verkiezingsinstanties, beursfilings, directe bedrijfsmededelingen.
+
+**Tier 2 — betrouwbare verslaggeving**
+Grote persagentschappen, gevestigde media, financieel nieuws met directe bronvermelding.
+
+**Tier 3 — secundaire interpretatie**
+Analistencommentaar, blogs, opinion pieces, samenvattingen.
+
+**Tier 4 — geruchten en sociale signalen**
+Posts zonder bevestiging, screenshots, speculatie, “hearing that…”, anonieme claims.
+
+Een volwassen bot mag op Tier 4 misschien signalen verzamelen, maar nooit blind executen. Dit is een van de eerste guardrails die al in de ingestion layer kan worden voorbereid.
+
+---
+
+## 3.5 Relevance Filter
+
+Wanneer informatie binnenkomt, betekent dat nog niet dat die bruikbaar is. De volgende laag moet daarom bepalen: **is dit bericht relevant voor een verhandelbare prediction market?**
+
+Dit lijkt een simpele classificatie, maar in werkelijkheid is het een van de meest bepalende onderdelen van de strategie. Een bot die alles serieus neemt, verdrinkt in ruis. Een bot die te streng filtert, mist kansen.
+
+De relevance filter kan werken op meerdere niveaus:
+
+### Semantische relevantie
+
+Gaat het bericht überhaupt over een onderwerp dat op Polymarket wordt verhandeld? Denk aan:
+
+* politiek
+* macro-economie
+* centrale banken
+* crypto deadlines
+* verkiezingsuitslagen
+* wettelijke besluiten
+* sport of entertainment, afhankelijk van je marktuniversum
+
+### Tijdsrelevantie
+
+Is het nieuws actueel genoeg om nog edge te bevatten? Een bericht dat al twintig minuten oud is, kan voor een snelle repricing-strategie waardeloos zijn.
+
+### Resolutierelevantie
+
+Dit is nog belangrijker: verandert het nieuws de **werkelijke kans op resolutie** van de markt, of is het slechts achtergrondinformatie?
+
+Een voorbeeld maakt dit duidelijk. Stel dat er een markt bestaat over de vraag of een bepaald wetsvoorstel vóór een deadline wordt aangenomen. Een nieuwsbericht met de tekst “het debat was fel” is inhoudelijk interessant, maar zegt misschien weinig over de feitelijke kans op resolutie. Een bericht als “de regeringscoalitie heeft officieel voldoende stemmen bevestigd” is veel relevanter.
+
+De relevance filter moet dus niet alleen vragen: “gaat dit hierover?” maar vooral: **“verandert dit iets dat ertoe doet?”**
+
+---
+
+## 3.6 Market Mapping Engine
+
+Zodra nieuws relevant is verklaard, moet het systeem weten **welke markt erbij hoort**. Dit is de taak van de market mapping engine.
+
+Prediction markets zijn geen open grafiek met een ticker zoals EUR/USD. Er zijn vaak veel verschillende markten rond één thema:
+
+* een markt op een specifieke datum
+* meerdere prijsniveaus
+* markten per maand, week of dag
+* verwante markten met iets andere resolutiecriteria
+* hoofdmarkten en submarkten binnen één eventcluster
+
+De mapping engine moet daarom van taal naar marktstructuur kunnen vertalen.
+
+Stel dat een headline gaat over een renteverlaging. Dan moet de bot weten of dit relevant is voor:
+
+* een markt over een verlaging in de komende vergadering
+* een markt over het totaal aantal verlagingen in het jaar
+* een markt over een specifieke speech-uitkomst
+* een gerelateerde markt over inflatie of recessie
+
+Het gevaar is hier duidelijk: verkeerd mappen betekent handelen in de verkeerde markt. En dat is geen kleine fout, maar een fundamentele systeemfout.
+
+Daarom moet mapping bij voorkeur gebeuren in twee stappen:
+
+### Stap 1: onderwerpcluster bepalen
+
+Bijvoorbeeld:
+
+* Fed
+* Bitcoin ETF
+* verkiezing kandidaat X
+* CPI release
+* geopolitieke escalatie
+
+### Stap 2: precieze marktselectie
+
+Daarna pas:
+
+* welke markt heeft de juiste deadline
+* welke markt heeft de juiste resolutieformulering
+* welke markt heeft voldoende liquiditeit
+* welke markt staat open voor orderboekhandel
+
+De mapping engine moet dus niet alleen “matchen op woorden”, maar ook controleren of de markt operationeel bruikbaar is.
+
+---
+
+## 3.7 Resolution Understanding Layer
+
+Dit is waarschijnlijk de meest onderschatte maar belangrijkste laag van de hele architectuur.
+
+Een prediction market draait uiteindelijk maar om één ding: **hoe wordt de markt officieel beslist?** Niet hoe logisch iets klinkt. Niet wat Twitter denkt. Niet wat de meeste traders “bedoelen”. Alleen de resolutieregels tellen.
+
+Daarom moet de bot een aparte laag hebben die de markttekst en criteria begrijpt.
+
+Deze laag moet vragen beantwoorden als:
+
+* wat moet er precies gebeuren om YES waar te maken?
+* welke bron bepaalt de uitkomst?
+* geldt een exacte deadline of een tijdsvenster?
+* tellen voorlopige cijfers of alleen officiële bevestigingen?
+* tellen woorden als “announced”, “implemented”, “signed”, “published”, “confirmed” juridisch hetzelfde?
+* wat gebeurt er bij vertraging, betwisting of onduidelijkheid?
+
+Waarom is dit zo cruciaal? Omdat een headline vaak suggereert dat een gebeurtenis “in feite” heeft plaatsgevonden, terwijl de markt misschien nog op een formele bevestiging wacht.
+
+Een voorbeeld:
+
+Een minister zegt in een interview dat een maatregel “waarschijnlijk volgende week wordt ingevoerd”. Mensen kunnen daar bullish op reageren. Maar als de markt pas resolved op basis van een **officieel gepubliceerd besluit**, dan is die headline nog geen directe trigger voor YES.
+
+De resolution layer moet dus als een juridisch denkende machine functioneren. Deze module beschermt de bot tegen te losse interpretaties.
+
+Dit is exact het soort onderdeel dat je niet wilt mengen met de algemene AI-analyse. Juist omdat het zo belangrijk is, verdient het een aparte, streng gecontroleerde module.
+
+---
+
+## 3.8 Probability Engine
+
+Pas nu komt de laag waar de meeste mensen als eerste aan denken: de module die de kansverandering inschat.
+
+De probability engine heeft als taak om te bepalen:
+
+**gegeven dit nieuws en gegeven deze markt, hoe verandert de kans op YES of NO?**
+
+Dit is de intelligentielaag van het systeem, maar die moet strak begrensd worden. Je wilt hier geen model dat “vrij associeert”. Je wilt een model dat gestructureerd redeneert.
+
+De probability engine moet in feite een kansupdate doen, geen magische voorspelling.
+
+Een goede benadering is dat deze laag de volgende deelvragen beantwoordt:
+
+1. Wat is de kernclaim van het nieuws?
+2. Is deze claim bevestigend, ontkennend of neutraal voor de markt?
+3. Hoe direct raakt dit de resolutiecriteria?
+4. Hoe betrouwbaar is de bron?
+5. Hoe sterk is de informatie-update vergeleken met wat al bekend was?
+6. Is dit nieuw bewijs, of slechts herhaling van bestaand nieuws?
+7. Hoe groot is de kans dat de markt dit al heeft ingeprijsd?
+8. Wat is de nieuwe modelprobability?
+9. Hoe zeker is de bot van die probability-update?
+
+Dat laatste punt is essentieel. Niet alleen de kans zelf telt, maar ook de **onzekerheid van de schatting**.
+
+Een volwassen probability engine geeft daarom liever iets als:
+
+* model probability: 0.68
+* confidence in estimate: medium
+* source quality: high
+* novelty: high
+* resolution match: strong
+
+In plaats van alleen:
+
+* “BUY YES”
+
+Dat maakt de volgende lagen veel beter bestuurbaar.
+
+---
+
+## 3.9 Market State Analyzer
+
+Zelfs als het model denkt dat de kans hoger is dan de marktprijs suggereert, wil dat nog niet zeggen dat de trade praktisch goed uitvoerbaar is. De bot moet ook kijken naar de staat van de markt zelf.
+
+De market state analyzer heeft daarom een meer microstructurele taak:
+
+* wat is de huidige best bid / best ask?
+* hoe breed is de spread?
+* hoeveel volume ligt er op de eerste niveaus?
+* hoe snel beweegt het orderboek?
+* is er plotselinge repricing al gaande?
+* is de markt dun en kwetsbaar voor slippage?
+* is er genoeg diepte om een positie te openen zonder de edge op te eten?
+
+Dit onderdeel lijkt misschien uitvoerend en technisch, maar het is in werkelijkheid direct strategisch.
+
+Een bot kan op papier een edge hebben van 7 procentpunt. Maar als de spread groot is, liquiditeit dun is en de prijs al snel doorschiet zodra je wilt kopen, blijft er netto misschien niets over.
+
+Daarom moet de bot niet alleen de theoretische marktprobability lezen, maar de **werkelijke executieprijs** inschatten.
+
+Bij prediction markets is dat extra belangrijk, omdat sommige markten klein zijn en prijsreacties schoksgewijs kunnen verlopen.
+
+---
+
+## 3.10 Edge Engine
+
+Nu komen alle eerdere lagen samen.
+
+De edge engine is de beslislaag die zegt:
+
+**is deze trade, hier en nu, werkelijk de moeite waard?**
+
+Deze laag combineert:
+
+* model probability
+* current market implied probability
+* spread
+* slippage estimate
+* fee impact
+* source uncertainty
+* resolution uncertainty
+* confidence penalty
+* exposure constraints
+
+In simpele vorm zou de redenering kunnen zijn:
+
+**ruwe edge = modelkans – marktprijs**
+maar een echte edge engine denkt verder:
+
+**netto edge = ruwe edge – kosten – onzekerheid – uitvoeringsrisico**
+
+Dit is een fundamenteel punt. Je wilt geen bot die handelt omdat er ergens een theoretisch voordeel lijkt. Je wilt een bot die alleen handelt wanneer er na alle aftrekposten nog steeds voldoende overwicht is.
+
+Dat betekent dat de edge engine niet alleen een drempel heeft, maar vaak meerdere:
+
+* minimale ruwe edge
+* minimale netto edge
+* minimale confidence
+* minimale bronbetrouwbaarheid
+* maximale resolutie-onzekerheid
+* minimale orderboekdiepte
+
+Op die manier wordt de trade niet bepaald door één signaal, maar door een **samenvallende set van condities**.
+
+---
+
+## 3.11 Execution Engine
+
+Pas helemaal aan het eind van de keten komt de execution engine.
+
+Dat is bewust. In veel tradingprojecten wordt execution als iets heel belangrijks gezien, maar in dit type strategie is het eigenlijk pas de laatste schakel. Als de interpretatie fout is, maakt perfecte execution je verlies alleen maar sneller.
+
+Toch moet de execution engine professioneel zijn ingericht.
+
+Hij moet onder andere kunnen:
+
+* ordertypes kiezen
+* positieomvang bepalen
+* limietprijs of agressiviteit vaststellen
+* partial fills afhandelen
+* retries beheren
+* dubbele orders voorkomen
+* open orders monitoren
+* cancel/replace uitvoeren als de markt beweegt
+* trades loggen met volledige context
+
+Een newsbot heeft hierbij een extra spanningsveld: snelheid versus prijsdiscipline.
+
+Als je te voorzichtig bent met limietorders, mis je de move.
+Als je te agressief bent, betaal je de hele edge weg in slechte fills.
+
+Daarom moet execution niet dom zijn, maar contextgevoelig. Soms is een snelle agressieve fill logisch, bijvoorbeeld bij een extreem sterke headline in een liquide markt. Soms is het beter om niet te jagen en de trade te laten schieten.
+
+Een volwassen architectuur accepteert dat sommige kansen bewust niet worden gepakt. Niet elke theoretische edge is executabel.
+
+---
+
+## 3.12 Risk & Guardrail Layer
+
+Dit is de laag die bepaalt of de bot een bruikbare tradingmachine wordt of een geautomatiseerde foutversterker.
+
+De grootste verleiding bij een slim systeem is om steeds meer autonomie te geven. Maar juist hier moet de architectuur conservatief zijn. De bot moet niet alleen kunnen handelen; hij moet vooral ook **kunnen weigeren**.
+
+De risk- en guardraillaag moet los staan van de intelligentielaag. Dus zelfs als de probability engine enthousiast is, kunnen guardrails alsnog veto uitspreken.
+
+Denk aan regels zoals:
+
+* niet traden op onofficiële of onbevestigde bronnen
+* niet traden als de markttekst niet eenduidig is geïnterpreteerd
+* niet traden als spread te groot is
+* niet traden boven maximale exposure per eventcluster
+* niet traden als meerdere markten op hetzelfde nieuws al open risico hebben
+* niet traden als de headline waarschijnlijk al in de prijs verwerkt is
+* niet traden als de confidence in de AI-output onder drempel ligt
+* niet traden als de markt vlak voor resolutie erratisch wordt
+* niet traden bij tegenstrijdige signalen uit meerdere bronnen
+
+Dit is waar jouw bestaande OCLW-denken heel waardevol kan zijn. Guardrails zijn geen bijzaak; ze zijn de reden dat een strategie live kan overleven.
+
+Een goede bot wordt niet gedefinieerd door hoe vaak hij iets doet, maar door hoe vaak hij iets **terecht niet doet**.
+
+---
+
+## 3.13 Position Monitor & Exit Logic
+
+Bij veel mensen ligt de focus vooral op entry. Maar in prediction markets is exit minstens zo belangrijk.
+
+Een positie kan op meerdere manieren worden afgesloten:
+
+* de markt repriced snel en je neemt winst vóór resolutie
+* het nieuws blijkt minder sterk dan gedacht
+* een tegenbericht neutraliseert de edge
+* liquiditeit droogt op
+* tijdswaarde verandert de aantrekkelijkheid van de positie
+* je wilt risico reduceren voor een deadline of event update
+
+Daarom moet de bot na entry niet ophouden met denken. Hij moet de positie blijven volgen.
+
+De monitorlaag kijkt bijvoorbeeld naar:
+
+* huidige PnL
+* verandering in implied probability
+* nieuw binnenkomend nieuws op hetzelfde event
+* tijd tot resolutie
+* orderboekverslechtering
+* verandering in confidence van het model
+* portfolio-exposure op gerelateerde markten
+
+Zo’n systeem kan dan exit-regels gebruiken zoals:
+
+* take-profit bij snelle repricing
+* force-exit als originele thesis ongeldig wordt
+* reduce-only bij oplopende onzekerheid
+* tijdsexit als edge niet materialiseert
+* flatten vlak vóór momenten waarop je model minder betrouwbaar is
+
+Bij prediction markets is het vaak slim om niet te denken in klassieke stop-loss/take-profit zoals bij forex, maar in **thesis validity** en **price discovery completion**.
+
+Je zit niet in een momentumtrade op candle-structuur; je zit in een trade op informatie-inefficiëntie. Zodra die inefficiëntie is verdwenen, is de reden voor de positie weg.
+
+---
+
+## 3.14 Logging, Audit en Replay
+
+Een van de meest waardevolle onderdelen van de architectuur is het audit- en replaysysteem.
+
+Omdat de bot op nieuws handelt, moet achteraf volledig te reconstrueren zijn:
+
+* welk bericht binnenkwam
+* wanneer het binnenkwam
+* hoe het is geclassificeerd
+* welke markt eraan gekoppeld werd
+* hoe de resolutiecriteria werden gelezen
+* welke modelkans werd berekend
+* wat de marktprijs op dat moment was
+* welke edge de engine zag
+* waarom wel of niet werd gehandeld
+* hoe de positie zich daarna ontwikkelde
+
+Zonder dit systeem kun je de bot niet echt verbeteren. Je ziet dan alleen winst of verlies, maar niet **waarom**.
+
+In jouw geval is dit extra belangrijk, omdat je later misschien iteraties wilt doen zoals:
+
+* betere bronnen toevoegen
+* modelprompt aanpassen
+* strengere guardrails zetten
+* mapping verbeteren
+* specifieke eventcategorieën uitschakelen
+* execution agressiever of juist rustiger maken
+
+Dat kan alleen als je een gedetailleerd spoor hebt van elke beslissing.
+
+De replayfunctie is hier goud waard. Daarmee kun je historische nieuwssequenties opnieuw afspelen alsof ze live binnenkomen en zien hoe de bot zou hebben gereageerd. Dat sluit perfect aan op jouw oorspronkelijke idee van een systeem dat als het ware door de tijd loopt zonder te spieken.
+
+---
+
+## 3.15 De dataflow als geheel
+
+Als we alles samenbrengen, ziet de end-to-end architectuur er conceptueel zo uit:
+
+### Stap 1 — Input
+
+Nieuws, statements, macrodata, officiële updates komen binnen.
+
+### Stap 2 — Normalisatie
+
+Alle bronnen worden omgezet naar één intern eventformaat.
+
+### Stap 3 — Relevantiecheck
+
+Ruis wordt weggefilterd; alleen potentieel marktrelevant nieuws blijft over.
+
+### Stap 4 — Market mapping
+
+Het event wordt gekoppeld aan één of meerdere concrete prediction markets.
+
+### Stap 5 — Resolution parsing
+
+De bot controleert of het nieuws werkelijk resolutierelevant is.
+
+### Stap 6 — Probability update
+
+De bot schat hoe de kans op YES/NO verandert.
+
+### Stap 7 — Market state check
+
+De bot leest prijs, spread, diepte en uitvoerbaarheid.
+
+### Stap 8 — Edge berekening
+
+Theoretische en netto edge worden berekend.
+
+### Stap 9 — Risk veto
+
+Guardrails en exposure-limieten beslissen of handelen mag.
+
+### Stap 10 — Execution
+
+Een order wordt geplaatst, gemonitord en gelogd.
+
+### Stap 11 — Position management
+
+De bot volgt nieuws, prijs en thesis-validiteit totdat de positie gesloten wordt.
+
+### Stap 12 — Audit & replay
+
+Alle beslissingen worden opgeslagen voor analyse en verbetering.
+
+---
+
+## 3.16 Waarom modulariteit hier geen luxe is
+
+Het is verleidelijk om dit soort systemen compact te bouwen: één script dat nieuws leest, AI aanroept en orders plaatst. Voor een demo kan dat nog. Voor serieus gebruik is het een slecht idee.
+
+Modulariteit is hier cruciaal om vier redenen.
+
+### Ten eerste: betrouwbaarheid
+
+Als de news-ingestie uitvalt, wil je niet dat execution onbedoeld vreemde dingen blijft doen.
+
+### Ten tweede: testbaarheid
+
+Je wilt de probability engine kunnen testen zonder live orders te sturen. Je wilt de mapping engine kunnen valideren zonder heel de stack te draaien.
+
+### Ten derde: iteratiesnelheid
+
+Misschien blijkt later dat je model goed werkt, maar market mapping slecht. Dan wil je juist dat onderdeel vervangen zonder de rest te verbouwen.
+
+### Ten vierde: schaalbaarheid
+
+Als de bot later meerdere marktcategorieën, meerdere bronnen en meerdere modeltypes ondersteunt, stort een monolithisch script in.
+
+Voor jouw manier van bouwen, met OCLW als basis, is dit eigenlijk een sterk voordeel. Je denkt al in modules, guardrails en logs. Deze strategie vraagt precies dat soort discipline.
+
+---
+
+## 3.17 De echte kern van deze architectuur
+
+Als we alles terugbrengen tot de essentie, draait de architectuur van deze bot om één centrale overgang:
+
+**van tekst naar kans**
+en daarna
+**van kans naar trade**
+
+Dat lijkt eenvoudig geformuleerd, maar het is precies waar alle complexiteit zit.
+
+Niet de code zelf is de moeilijkste stap.
+Niet het order plaatsen.
+Niet het ophalen van nieuws.
+
+De moeilijkste stap is:
+
+**wanneer verandert nieuwe informatie werkelijk de kans op een marktresolutie, en wanneer nog niet?**
+
+Daarom moet de architectuur deze overgang extreem serieus nemen. Dat is waarom we aparte modules nodig hebben voor relevantie, mapping, resolution understanding en probability updates. Zonder die discipline krijg je een bot die woorden ziet, maar geen gebeurtenissen begrijpt.
+
+En prediction markets belonen niet degene die het snelst woorden leest, maar degene die het snelst **betekenis** omzet in een correcte prijsinschatting.
+
+---
+
+## 3.18 Vooruitblik op hoofdstuk 4
+
+Nu de systeemarchitectuur staat, is de volgende logische stap om dit ontwerp te koppelen aan jouw bestaande infrastructuur. Want het doel is niet om helemaal opnieuw te beginnen als dat niet nodig is. De vraag wordt dan:
+
+**welke onderdelen van jouw OCLW-bot kunnen als machinekamer blijven bestaan, en welke onderdelen moeten volledig worden vervangen of nieuw gebouwd voor een Polymarket AI-newsbot?**
+
+In het volgende hoofdstuk werken we dat uit. Dan gaan we van abstract systeemontwerp naar concrete integratie met jouw bestaande botstructuur:
+
+* wat je kunt hergebruiken
+* wat je moet slopen
+* wat je moet toevoegen
+* en hoe je OCLW kunt transformeren van forex-engine naar event-driven prediction engine
+
+

@@ -1,0 +1,77 @@
+Table of Contents
+
+AI News Trading Bot voor Polymarket – Blueprint
+
+Hoofdstuk 1 — Het Idee: News-Driven Prediction Trading
+
+Waarom nieuws sneller is dan markten
+
+Hoe prediction markets werken
+
+Waarom Polymarket inefficiënties heeft
+
+Het concept: AI die nieuws vertaalt naar kansen
+
+Hoofdstuk 2 — Hoe Prediction Markets Prijzen Werken
+
+Odds = impliciete probability
+
+YES/NO shares
+
+Orderbooks en liquiditeit
+
+Wanneer een markt verkeerd geprijsd is
+
+Waar de edge ontstaat
+
+Hoofdstuk 3 — Architectuur van de AI News Bot
+
+Overzicht van het systeem
+
+Nieuws-ingestie
+
+Event mapping
+
+Probability engine
+
+Edge calculator
+
+Execution engine
+
+Risk manager
+
+Hoofdstuk 4 — Integratie met jouw OCLW Bot
+
+Welke modules je kunt hergebruiken
+
+Nieuwe modules die je moet bouwen
+
+Polymarket API integratie
+
+News parsing engine
+
+Event resolution engine
+
+Hoofdstuk 5 — De Werkelijke Edge: Milliseconds en Informatie
+
+Waarom snelheid alles is
+
+Bronprioriteit
+
+AI interpretatie van headlines
+
+Scenario-analyse
+
+Automatische trade-beslissingen
+
+Hoofdstuk 6 — Strategie, Risico en Schaalbaarheid
+
+Position sizing
+
+Exposure per event
+
+False news bescherming
+
+Portfolio van markten
+
+Hoe je dit kunt opschalen naar een trading deskok

@@ -1,0 +1,34 @@
+## Hoofdstuk 1 — Het Idee: News-Driven Prediction Trading
+
+Financiële markten bewegen vaak niet alleen door prijsactie, maar door **informatie**. Nieuwsberichten, officiële aankondigingen, economische cijfers en onverwachte gebeurtenissen kunnen binnen seconden de verwachting van de markt veranderen. In traditionele trading proberen handelaren deze informatie te vertalen naar prijsbewegingen. Prediction markets, zoals Polymarket, maken dit proces nog directer: daar wordt niet gehandeld in activa, maar in **de waarschijnlijkheid dat een gebeurtenis plaatsvindt**.
+
+In een prediction market vertegenwoordigt elke prijs een impliciete kans. Als een markt bijvoorbeeld een “YES” aandeel voor een gebeurtenis verhandelt op $0,40, betekent dat dat de markt ongeveer een **40% kans** inschat dat die gebeurtenis zal plaatsvinden. Wanneer nieuwe informatie verschijnt die deze kans verandert, zou de prijs in theorie onmiddellijk moeten aanpassen.
+
+In de praktijk gebeurt dat vaak **niet onmiddellijk**. Er ontstaat een korte periode waarin nieuwe informatie al publiek beschikbaar is, maar nog niet volledig is verwerkt in de marktprijs. Dit fenomeen staat bekend als **informatie-latency**. In die korte tijdspanne kunnen snelle systemen een voordeel hebben ten opzichte van menselijke traders die nieuws eerst moeten lezen, interpreteren en vervolgens een trade moeten plaatsen.
+
+Hier komt het idee van een **AI-gedreven nieuwsbot** naar voren. Het systeem wordt ontworpen om continu verschillende informatiebronnen te monitoren, zoals nieuwsfeeds, officiële verklaringen en realtime berichten. Zodra een relevante gebeurtenis wordt gedetecteerd, analyseert de bot de inhoud en bepaalt hij of het nieuws de kans op een specifieke gebeurtenis verhoogt of verlaagt. Vervolgens vergelijkt het systeem deze nieuwe kansinschatting met de huidige prijs van de corresponderende prediction market.
+
+Als er een verschil ontstaat tussen de **modelkans** en de **marktprijs**, ontstaat een potentiële handelsmogelijkheid. Stel bijvoorbeeld dat een nieuwsbericht sterk suggereert dat een bepaalde gebeurtenis waarschijnlijker is geworden, terwijl de prediction market dit nog niet volledig heeft ingeprijsd. De bot kan dan automatisch “YES” aandelen kopen voordat de marktprijs zich aanpast.
+
+Het doel van het systeem is dus niet om de toekomst te voorspellen op basis van technische patronen, maar om **nieuwe informatie sneller te verwerken dan de markt**. In plaats van prijsanalyse staat hier **informatieverwerking** centraal.
+
+Dit concept verschilt fundamenteel van traditionele tradingbots. In klassieke algoritmische handelssystemen worden indicatoren, prijsstructuren of statistische patronen gebruikt om beslissingen te nemen. In een news-driven systeem wordt de kern van de strategie gevormd door:
+
+* het detecteren van relevante gebeurtenissen
+* het correct interpreteren van nieuws
+* het vertalen van die informatie naar kansveranderingen
+* het uitvoeren van een trade voordat de markt volledig reageert
+
+Prediction markets zijn hiervoor bijzonder geschikt omdat hun prijzen direct gekoppeld zijn aan kansinschattingen. Hierdoor kan een systeem relatief eenvoudig bepalen wanneer de markt **onder- of overgewaardeerd** is ten opzichte van een model.
+
+Een tweede reden waarom prediction markets interessant zijn, is dat ze vaak minder efficiënt zijn dan grote financiële markten zoals forex of aandelen. Liquiditeit is doorgaans lager en veel deelnemers handelen op basis van intuïtie of sentiment in plaats van systematische analyse. Hierdoor kunnen prijsaanpassingen soms trager verlopen, wat extra ruimte creëert voor een geautomatiseerde strategie.
+
+Het uiteindelijke doel van de AI-newsbot is dus het bouwen van een systeem dat drie dingen beter doet dan menselijke traders:
+
+1. **Sneller nieuws detecteren**
+2. **Consistent de impact op een gebeurtenis inschatten**
+3. **Direct handelen wanneer een prijs inefficiënt is**
+
+Door deze drie stappen te automatiseren kan een tradingbot profiteren van de korte momenten waarin informatie al bekend is, maar nog niet volledig door de markt is verwerkt.
+
+In de volgende hoofdstukken wordt dit idee verder uitgewerkt. Eerst wordt uitgelegd hoe prediction markets prijzen vormen en hoe kansen uit marktprijzen kunnen worden afgeleid. Daarna wordt de technische architectuur van de AI-newsbot beschreven en hoe deze kan worden geïntegreerd met een bestaande tradinginfrastructuur zoals de OCLW-bot.

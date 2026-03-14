@@ -1,0 +1,177 @@
+## Hoofdstuk 6 — Strategie, Risico en Schaalbaarheid
+
+In de vorige hoofdstukken hebben we het idee, de werking van prediction markets, de architectuur van de bot en de informatie-edge besproken. Maar een tradingstrategie is pas echt compleet wanneer ook de **risico- en portfoliolaag** goed is uitgewerkt. Zonder sterke risicoregels kan zelfs een goed model uiteindelijk kapitaal verliezen.
+
+Prediction markets hebben namelijk een aantal unieke eigenschappen. Posities kunnen soms lange tijd openstaan, nieuws kan plotseling worden tegengesproken en sommige markten hebben relatief lage liquiditeit. Daarom moet een AI-newsbot niet alleen een goede entry vinden, maar ook **strikt kapitaalbeheer toepassen**.
+
+Dit hoofdstuk beschrijft hoe zo’n systeem veilig kan opereren en hoe het uiteindelijk kan worden opgeschaald naar een volwassen tradinginfrastructuur.
+
+---
+
+### 6.1 Position sizing
+
+De eerste en belangrijkste risicoregel is **hoe groot een positie mag zijn**.
+
+In een prediction market vertegenwoordigt de prijs van een share direct een kans. Wanneer je een YES-share koopt voor bijvoorbeeld $0,40, kan de maximale winst $0,60 zijn, maar het maximale verlies $0,40.
+
+Dit betekent dat position sizing anders werkt dan bij forex, waar stops en leverage vaak een rol spelen. In prediction markets is het risico meestal **direct gekoppeld aan de aankoopprijs van de share**.
+
+Een eenvoudige manier om positieomvang te bepalen is een percentage van het totale kapitaal. Bijvoorbeeld:
+
+* maximaal 2% van het kapitaal per trade
+* maximaal 5% per eventcluster
+* maximaal 20% totale exposure in de markt
+
+Door deze regels te volgen blijft het systeem robuust, zelfs wanneer meerdere trades achter elkaar verkeerd uitpakken.
+
+---
+
+### 6.2 Eventclusters en correlated risk
+
+Veel prediction markets zijn onderling verbonden. Een politieke gebeurtenis kan bijvoorbeeld invloed hebben op meerdere markten tegelijk.
+
+Als een bot meerdere posities opent die eigenlijk op hetzelfde nieuws wedden, kan het risico onbedoeld oplopen.
+
+Daarom is het verstandig om markten te groeperen in **eventclusters**. Alle markten die sterk afhankelijk zijn van dezelfde gebeurtenis vallen in dezelfde categorie.
+
+Voorbeelden van clusters kunnen zijn:
+
+* verkiezingsuitslagen
+* centrale bankbesluiten
+* crypto-regelgeving
+* belangrijke economische rapporten
+
+Het systeem moet dan controleren hoeveel kapitaal al in een cluster zit voordat een nieuwe trade wordt geopend.
+
+---
+
+### 6.3 False news bescherming
+
+Een belangrijk risico bij nieuwsstrategieën is **onjuiste informatie**. Geruchten of verkeerde interpretaties kunnen leiden tot prijsbewegingen die later weer worden teruggedraaid.
+
+Daarom moet een newsbot meerdere beschermingslagen hebben.
+
+Een eerste bescherming is bronverificatie. Het systeem moet onderscheid maken tussen primaire bronnen en speculatieve berichten.
+
+Een tweede bescherming is **cross-confirmation**. Als meerdere betrouwbare bronnen hetzelfde nieuws melden, wordt het signaal sterker.
+
+Een derde bescherming kan een korte wachttijd zijn. Soms is het verstandig om een paar seconden te wachten om te zien of een headline wordt bevestigd voordat een trade wordt uitgevoerd.
+
+---
+
+### 6.4 Liquidity management
+
+Niet elke prediction market heeft voldoende liquiditeit. Sommige markten hebben een breed orderboek met veel volume, terwijl andere nauwelijks orders bevatten.
+
+Een bot moet daarom altijd controleren of een positie daadwerkelijk uitvoerbaar is zonder de prijs sterk te beïnvloeden.
+
+Belangrijke factoren hierbij zijn:
+
+* de spread tussen bid en ask
+* de hoeveelheid shares op het eerste prijsniveau
+* de snelheid waarmee orders worden gevuld
+
+Als de liquiditeit te laag is, kan een theoretische edge in de praktijk verdwijnen door slippage.
+
+---
+
+### 6.5 Exitstrategie
+
+Een trade in een prediction market kan op meerdere manieren eindigen.
+
+Soms verandert de marktprijs snel nadat het nieuws verschijnt. In dat geval kan de bot winst nemen zonder te wachten op de uiteindelijke resolutie.
+
+In andere gevallen blijft de positie open tot de gebeurtenis daadwerkelijk wordt beslist.
+
+De bot moet daarom verschillende exitregels ondersteunen, zoals:
+
+* winst nemen wanneer de prijs snel repriced
+* positie sluiten wanneer nieuwe informatie de oorspronkelijke thesis ontkracht
+* risico verminderen wanneer de resolutiedatum nadert
+* automatisch sluiten wanneer een maximale holdingtijd wordt bereikt
+
+Deze regels zorgen ervoor dat de bot niet onnodig lang risico blijft dragen.
+
+---
+
+### 6.6 Portfolio-benadering
+
+Een succesvolle newsbot moet niet afhankelijk zijn van één enkele markt of gebeurtenis. Net als bij andere tradingstrategieën is diversificatie belangrijk.
+
+Het systeem kan bijvoorbeeld meerdere categorieën volgen, zoals:
+
+* crypto-prijsgebeurtenissen
+* macro-economische releases
+* politieke ontwikkelingen
+* regelgeving rond technologie of financiële markten
+
+Door meerdere categorieën te combineren ontstaat een portfolio waarin verliezen in de ene markt kunnen worden gecompenseerd door winsten in een andere.
+
+---
+
+### 6.7 Continue verbetering
+
+Een van de grootste voordelen van een geautomatiseerd systeem is dat elke beslissing kan worden vastgelegd en geanalyseerd.
+
+De bot kan bijvoorbeeld loggen:
+
+* welke nieuwsbron het signaal veroorzaakte
+* welke kansupdate werd berekend
+* hoe de marktprijs reageerde
+* of de trade winstgevend was
+
+Door deze gegevens te analyseren kan het systeem worden verbeterd.
+
+Je kunt bijvoorbeeld ontdekken dat bepaalde bronnen betrouwbaarder zijn dan andere, of dat sommige marktcategorieën vaker een edge opleveren.
+
+---
+
+### 6.8 Schaalbaarheid
+
+Wanneer de bot stabiel functioneert, kan het systeem worden opgeschaald.
+
+Schaalbaarheid kan op verschillende manieren plaatsvinden.
+
+De eerste stap is het toevoegen van meer markten. Zodra het systeem betrouwbaar werkt voor een klein universum van events, kan het worden uitgebreid naar meer categorieën.
+
+Een tweede stap is het verbeteren van de nieuwsdetectie. Meer bronnen en snellere verwerking kunnen de informatievoorsprong vergroten.
+
+Een derde stap is het verbeteren van de interpretatiemodellen. Naarmate meer data beschikbaar komt, kan het systeem beter leren welke nieuwsberichten daadwerkelijk invloed hebben op marktprijzen.
+
+---
+
+### 6.9 Van experiment naar tradingdesk
+
+In de eerste fase is een AI-newsbot vooral een experiment. Het systeem wordt getest, verbeterd en gecontroleerd.
+
+Maar wanneer de architectuur stabiel wordt en de strategie consistente resultaten oplevert, kan het systeem uitgroeien tot een volwaardig tradingplatform.
+
+Een volwassen infrastructuur kan bijvoorbeeld bestaan uit:
+
+* meerdere bots die verschillende markten volgen
+* een centrale risicomodule die alle posities bewaakt
+* dashboards voor monitoring en analyse
+* automatische rapportage van prestaties
+
+Op dat moment lijkt het systeem meer op een kleine tradingdesk dan op een enkel script.
+
+---
+
+### 6.10 Conclusie
+
+Het idee van een AI-newsbot voor prediction markets draait uiteindelijk om één concept: **informatie sneller en consistenter verwerken dan de markt**.
+
+Door nieuws te detecteren, te interpreteren en te vertalen naar kansveranderingen kan een geautomatiseerd systeem momenten vinden waarop de marktprijs nog niet volledig is aangepast.
+
+Wanneer dit wordt gecombineerd met sterke risicoregels, goede execution en een divers portfolio van markten, kan een dergelijke strategie een structurele edge creëren.
+
+De sleutel tot succes ligt niet in één enkele techniek, maar in de combinatie van:
+
+* snelle informatieverwerking
+* correcte interpretatie van gebeurtenissen
+* discipline in risicobeheer
+* continue analyse en verbetering van het systeem
+
+Met de juiste architectuur kan een bestaande tradinginfrastructuur, zoals de OCLW-bot, worden uitgebreid tot een event-gedreven systeem dat handelt op basis van informatie-inefficiënties in prediction markets.
+
+Daarmee ontstaat een tradingmodel dat fundamenteel verschilt van traditionele technische analyse: niet prijsactie, maar **informatie** wordt de drijvende kracht achter elke beslissing.
