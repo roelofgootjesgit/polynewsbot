@@ -23,12 +23,34 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    """Run the bot (placeholder — Fase 5)."""
+    """Run the bot pipeline."""
     cfg = load_config(args.config)
     setup_logging(cfg)
-    logger.info("Polymarket News Bot starting...")
-    logger.info("Mode: %s", "DRY RUN" if cfg.get("execution", {}).get("dry_run", True) else "LIVE")
-    logger.warning("Pipeline not yet implemented — see DEVELOPMENT_PLAN.md Fase 5")
+
+    from src.pipeline.orchestrator import EventPipeline
+
+    mode = "DRY RUN" if cfg.get("execution", {}).get("dry_run", True) else "LIVE"
+    logger.info("Polymarket News Bot starting... (%s)", mode)
+
+    pipeline = EventPipeline(cfg)
+    pipeline.setup()
+    pipeline.run_loop(max_cycles=args.cycles)
+    return 0
+
+
+def cmd_cycle(args: argparse.Namespace) -> int:
+    """Run a single pipeline cycle (useful for testing)."""
+    cfg = load_config(args.config)
+    setup_logging(cfg)
+
+    from src.pipeline.orchestrator import EventPipeline
+
+    logger.info("Running single pipeline cycle...")
+    pipeline = EventPipeline(cfg)
+    pipeline.setup()
+    stats = pipeline.run_cycle()
+    logger.info("Result: %s", stats.summary())
+    pipeline.shutdown()
     return 0
 
 
@@ -41,7 +63,12 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("status", help="Show bot status and config").set_defaults(func=cmd_status)
-    sub.add_parser("run", help="Run the bot pipeline").set_defaults(func=cmd_run)
+
+    run_parser = sub.add_parser("run", help="Run the bot pipeline loop")
+    run_parser.add_argument("--cycles", type=int, default=0, help="Max cycles (0=infinite)")
+    run_parser.set_defaults(func=cmd_run)
+
+    sub.add_parser("cycle", help="Run a single pipeline cycle").set_defaults(func=cmd_cycle)
 
     args = parser.parse_args()
     try:
