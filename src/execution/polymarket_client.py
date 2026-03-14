@@ -122,10 +122,18 @@ class PolymarketClient:
     # ── CLOB API: Orderbook & Prices ──────────────────────────────────
 
     def get_orderbook(self, token_id: str) -> dict[str, Any]:
-        """Get orderbook for a token (YES or NO side)."""
+        """Get orderbook for a token (YES or NO side). Returns normalized dict."""
         if not self._clob:
             raise RuntimeError("CLOB client not initialized — call connect() first")
-        return self._clob.get_order_book(token_id)
+        ob = self._clob.get_order_book(token_id)
+        if isinstance(ob, dict):
+            return ob
+        return {
+            "bids": [{"price": s.price, "size": s.size} for s in (ob.bids or [])],
+            "asks": [{"price": s.price, "size": s.size} for s in (ob.asks or [])],
+            "market": getattr(ob, "market", ""),
+            "asset_id": getattr(ob, "asset_id", ""),
+        }
 
     def get_price(self, token_id: str, side: str = "buy") -> Optional[float]:
         """Get best price for a token on given side."""

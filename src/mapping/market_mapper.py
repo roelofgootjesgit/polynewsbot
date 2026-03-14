@@ -103,6 +103,12 @@ class MarketMapper:
         keyword_score = min(keyword_hits * 0.15, 0.6)
         similarity_score = title_sim
 
+        entity_bonus = 0.0
+        for entity in _KEY_ENTITIES:
+            if entity in headline_lower and entity in title_lower:
+                entity_bonus = 0.25
+                break
+
         topic_bonus = 0.0
         if event.topic_hints and market.market_category:
             if market.market_category in event.topic_hints:
@@ -111,7 +117,7 @@ class MarketMapper:
         liquidity_bonus = market.liquidity_score * 0.1
 
         confidence = min(
-            keyword_score + similarity_score * 0.5 + topic_bonus + liquidity_bonus,
+            keyword_score + similarity_score * 0.5 + entity_bonus + topic_bonus + liquidity_bonus,
             1.0,
         )
         return round(confidence, 3)

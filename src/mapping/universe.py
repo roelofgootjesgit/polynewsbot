@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from src.models.markets import MarketCandidate
 
@@ -50,7 +50,7 @@ class MarketUniverse:
                     self._markets.append(candidate)
 
         logger.info(
-            "Universe loaded: %d events → %d tradeable markets",
+            "Universe loaded: %d events -> %d tradeable markets",
             len(raw_events), len(self._markets),
         )
         return len(self._markets)
@@ -78,7 +78,7 @@ class MarketUniverse:
         _CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
         data = [m.model_dump(mode="json") for m in self._markets]
         _CACHE_FILE.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
-        logger.info("Universe cached: %d markets → %s", len(data), _CACHE_FILE)
+        logger.info("Universe cached: %d markets -> %s", len(data), _CACHE_FILE)
 
     def load_cache(self) -> int:
         """Load universe from disk cache."""
@@ -102,8 +102,13 @@ def _parse_market(
         question = mkt.get("question", mkt.get("groupItemTitle", ""))
         description = mkt.get("description", "")
 
-        tokens = mkt.get("clobTokenIds", [])
-        yes_token = tokens[0] if tokens else ""
+        raw_tokens = mkt.get("clobTokenIds", [])
+        if isinstance(raw_tokens, str):
+            try:
+                raw_tokens = json.loads(raw_tokens)
+            except (json.JSONDecodeError, TypeError):
+                raw_tokens = []
+        yes_token = raw_tokens[0] if raw_tokens else ""
 
         end_date_str = mkt.get("endDate") or mkt.get("end_date_iso")
         deadline = None

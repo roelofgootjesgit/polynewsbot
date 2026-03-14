@@ -46,9 +46,9 @@ class PipelineStats:
 
     def summary(self) -> str:
         return (
-            f"polled={self.events_polled} → filtered={self.events_passed_filter} "
-            f"→ matched={self.markets_matched} → edges={self.edges_found} "
-            f"→ approved={self.trades_approved} → executed={self.trades_executed} "
+            f"polled={self.events_polled} -> filtered={self.events_passed_filter} "
+            f"-> matched={self.markets_matched} -> edges={self.edges_found} "
+            f"-> approved={self.trades_approved} -> executed={self.trades_executed} "
             f"(vetoed={self.vetoed})"
         )
 
@@ -335,6 +335,7 @@ class EventPipeline:
 
     def shutdown(self) -> None:
         """Clean up resources."""
+        self.decision_logger.flush()
         if self.client:
             self.client.close()
         self.order_manager.save_state()

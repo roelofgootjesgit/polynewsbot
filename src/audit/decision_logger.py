@@ -69,7 +69,7 @@ class DecisionLogger:
                 f.write(json.dumps(trace.to_dict(), default=str) + "\n")
                 count += 1
 
-        logger.info("Flushed %d decision traces → %s", count, filepath)
+        logger.info("Flushed %d decision traces -> %s", count, filepath)
         self._traces.clear()
         return count
 
