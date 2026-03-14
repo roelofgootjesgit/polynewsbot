@@ -30,7 +30,7 @@ class TradeDecision(BaseModel):
     decision_reason: str = ""
 
     confidence: float = Field(0.0, ge=0.0, le=1.0)
-    source_tier: int = 1
+    source_quality: float = Field(0.0, ge=0.0, le=1.0)
 
 
 class Position(BaseModel):

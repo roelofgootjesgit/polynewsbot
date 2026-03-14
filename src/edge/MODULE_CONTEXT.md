@@ -3,17 +3,18 @@
 ## Wat
 Combineert model probability en market state tot een netto handelsbeslissing.
 
-## Te bouwen (Fase 4)
+## Bestanden
 - `engine.py` — EdgeEngine: ProbabilityAssessment + MarketState → TradeDecision
 
 ## Formules
-- raw_edge = model_probability - market_implied_probability
-- net_edge = raw_edge - fees - slippage - uncertainty_penalty - execution_risk
+- raw_edge = |model_probability - market_implied_probability|
+- net_edge = raw_edge - fees - slippage - uncertainty_penalty
+- uncertainty_penalty = (1 - confidence) * weight * raw_edge
+- Side = YES als model > market, anders NO
 
 ## Minimum condities (alle config-driven)
-- min_raw_edge, min_net_edge, min_confidence
-- min_source_reliability, max_resolution_uncertainty
-- min_orderbook_depth
+- min_raw_edge (default 0.05)
+- min_net_edge (default 0.03)
 
 ## Interfaces
 - **Input:** ProbabilityAssessment + MarketState
@@ -22,4 +23,4 @@ Combineert model probability en market state tot een netto handelsbeslissing.
 ## Config sectie: `edge.*` in default.yaml
 
 ## Status
-- [ ] Niet gestart — gepland voor Fase 4
+- [x] Edge berekening + drempels — Fase 4 compleet

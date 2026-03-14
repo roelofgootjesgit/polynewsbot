@@ -393,7 +393,7 @@ Polymarket_news_bot/
 | 1 | Polymarket Adapter | 3-4 | ☑ Afgerond |
 | 2 | News Ingestion | 5-6 | ☑ Afgerond |
 | 3 | Relevance + Mapping | 7-8 | ☑ Afgerond |
-| 4 | Edge + Risk | 9-10 | ☐ Niet gestart |
+| 4 | Edge + Risk | 9-10 | ☑ Afgerond |
 | 5 | Pipeline Orchestratie | 11-12 | ☐ Niet gestart |
 | 6 | AI Interpretatie | 13-15 | ☐ Niet gestart |
 | 7 | Position Monitor | 16-17 | ☐ Niet gestart |

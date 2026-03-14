@@ -3,26 +3,32 @@
 ## Wat
 Veto-logica + position sizing + portfolio exposure. Staat los van de intelligentielaag.
 
-## Te bouwen (Fase 4)
-- `guardrails.py` — Veto checks (source tier, spread, confidence, exposure, etc.)
-- `sizing.py` — Position sizing (max % per trade, per cluster, totaal)
-- `exposure.py` — Portfolio exposure tracking per event cluster
+## Bestanden
+- `sizing.py` — PositionSizer: max % per trade, cluster, totaal + confidence scaling
+- `exposure.py` — ExposureTracker: portfolio exposure per cluster en totaal
+- `guardrails.py` — Guardrails: onafhankelijke veto checks + kill switch
 
 ## Interfaces
-- **Input:** TradeDecision (pre-approval) + huidige portfolio state
-- **Output:** TradeDecision met guardrail_status (passed/vetoed) en position_size_usd
+- **Input:** TradeDecision + ProbabilityAssessment + MarketState + ExposureTracker + capital
+- **Output:** GuardrailResult (approved bool, veto_reasons, position_size_usd)
 
-## Veto regels (uit docs)
-- Niet traden op onbevestigde bronnen (tier 4 alleen)
-- Niet traden bij onduidelijke resolutie
-- Niet traden bij te grote spread
-- Niet traden boven max exposure per cluster
-- Niet traden bij lage confidence
-- Niet traden bij tegenstrijdige signalen
+## Veto regels
+- Source quality te laag (< 0.3)
+- Confidence onder minimum
+- Spread te breed
+- Liquidity quality "low"
+- Resolution match te zwak (< 0.3)
+- Daily loss limit bereikt
+- Equity kill switch (drawdown van peak)
+- Position size = 0 door exposure limits
 
-## OCLW hergebruik: patroon van risk.py en sizing.py
+## Kill switch
+- Tracked drawdown van peak capital
+- Eenmaal geactiveerd blokkeert alle trades
 
 ## Config sectie: `risk.*` in default.yaml
 
 ## Status
-- [ ] Niet gestart — gepland voor Fase 4
+- [x] Position sizing — Fase 4 compleet
+- [x] Exposure tracker — Fase 4 compleet
+- [x] Guardrails + kill switch — Fase 4 compleet
