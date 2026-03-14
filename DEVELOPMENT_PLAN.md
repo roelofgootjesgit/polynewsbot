@@ -395,6 +395,6 @@ Polymarket_news_bot/
 | 3 | Relevance + Mapping | 7-8 | ☑ Afgerond |
 | 4 | Edge + Risk | 9-10 | ☑ Afgerond |
 | 5 | Pipeline Orchestratie | 11-12 | ☑ Afgerond |
-| 6 | AI Interpretatie | 13-15 | ☐ Niet gestart |
+| 6 | AI Interpretatie | 13-15 | ☑ Afgerond |
 | 7 | Position Monitor | 16-17 | ☐ Niet gestart |
 | 8 | Audit + Replay | 18-20 | ☐ Niet gestart |

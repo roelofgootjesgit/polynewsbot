@@ -9,6 +9,8 @@ import logging
 import time
 from typing import Any, Optional
 
+from src.ai.hybrid import HybridProbabilityEngine, HybridResolutionParser
+from src.ai.llm_client import LLMClient
 from src.audit.decision_logger import DecisionLogger, DecisionTrace
 from src.edge.engine import EdgeEngine
 from src.execution.order_manager import OrderManager
@@ -20,8 +22,6 @@ from src.market_state.analyzer import MarketStateAnalyzer
 from src.models.events import NormalizedNewsEvent
 from src.models.markets import MarketCandidate
 from src.news.poller import NewsPoller
-from src.probability.engine import ProbabilityEngine
-from src.resolution.parser import ResolutionParser
 from src.risk.exposure import ExposureTracker
 from src.risk.guardrails import Guardrails
 
@@ -67,14 +67,16 @@ class EventPipeline:
         self.relevance = RelevanceFilter(cfg)
         self.universe = MarketUniverse(cfg)
         self.mapper = MarketMapper(cfg, self.universe)
-        self.resolution = ResolutionParser(cfg)
-        self.probability = ProbabilityEngine(cfg)
         self.state_analyzer = MarketStateAnalyzer(cfg)
         self.edge = EdgeEngine(cfg)
         self.guardrails = Guardrails(cfg)
         self.exposure = ExposureTracker()
         self.order_manager = OrderManager(cfg)
         self.decision_logger = DecisionLogger(cfg)
+
+        self.llm: Optional[LLMClient] = None
+        self.probability = HybridProbabilityEngine(cfg)
+        self.resolution = HybridResolutionParser(cfg)
 
         self.client: Optional[PolymarketClient] = None
         self._running = False
@@ -84,11 +86,23 @@ class EventPipeline:
     def setup(self) -> None:
         """Initialize all connections and load data."""
         logger.info("=" * 60)
-        logger.info("Pipeline setup — mode: %s", "DRY RUN" if self._dry_run else "LIVE")
+        logger.info("Pipeline setup -- mode: %s", "DRY RUN" if self._dry_run else "LIVE")
         logger.info("=" * 60)
 
         self.client = PolymarketClient(self._cfg)
         self.client.connect()
+
+        # LLM setup (optional — degrades gracefully)
+        self.llm = LLMClient(self._cfg)
+        llm_ok = self.llm.connect()
+        method = self._cfg.get("probability", {}).get("method", "rule_based")
+        if llm_ok:
+            logger.info("LLM: %s (model=%s)", method, self.llm.model)
+        else:
+            logger.info("LLM: not available -- using rule_based")
+
+        self.probability = HybridProbabilityEngine(self._cfg, self.llm if llm_ok else None)
+        self.resolution = HybridResolutionParser(self._cfg, self.llm if llm_ok else None)
 
         source_count = self.poller.setup()
         logger.info("News sources: %d", source_count)
@@ -336,6 +350,8 @@ class EventPipeline:
     def shutdown(self) -> None:
         """Clean up resources."""
         self.decision_logger.flush()
+        if self.llm and self.llm.cost_tracker.total_calls > 0:
+            logger.info(self.llm.cost_tracker.summary())
         if self.client:
             self.client.close()
         self.order_manager.save_state()

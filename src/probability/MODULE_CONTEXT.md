@@ -23,4 +23,4 @@ Berekent een gestructureerde kansupdate gegeven nieuws + marktcontext.
 
 ## Status
 - [x] Rule-based engine — Fase 4 compleet
-- [ ] LLM engine — gepland Fase 6
+- [x] LLM engine — Fase 6 compleet (via `src/ai/hybrid.py`)

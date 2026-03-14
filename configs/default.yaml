@@ -55,8 +55,16 @@ resolution:
   min_understanding_confidence: 0.7
 
 probability:
-  method: "rule_based"   # rule_based | llm | hybrid
+  method: "hybrid"       # rule_based | llm | hybrid
   min_confidence: 0.4
+
+ai:
+  openai_api_key: ""
+  model: "gpt-4o-mini"
+  max_tokens: 500
+  temperature: 0.2
+  timeout_seconds: 15
+  max_retries: 2
 
 edge:
   min_raw_edge: 0.05
