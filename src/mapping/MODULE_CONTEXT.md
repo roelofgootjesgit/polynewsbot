@@ -5,19 +5,22 @@ Koppelt relevant nieuws aan de juiste Polymarket markt(en).
 
 ## Bestanden
 - `universe.py` — MarketUniverse: fetch, cache, filter, search active markets
+- `market_mapper.py` — MarketMapper: news event → ranked MarketCandidate list
+
+## MarketMapper flow
+1. Build search terms uit headline + topic_hints + key entities
+2. Search universe op elke term
+3. Score matches: keyword overlap + SequenceMatcher similarity + topic bonus + liquidity bonus
+4. Dedup op condition_id, sort op confidence, cap op max_candidates
 
 ## MarketUniverse
-- `load_from_api(client)` — haalt alle active events op, parset naar MarketCandidate lijst
-- `get_markets(category=None)` — gefilterd ophalen
-- `find_by_id(market_id)` — zoek op condition_id of token_id
+- `load_from_api(client)` / `load_cache()` — markten ophalen
 - `search(query)` — keyword search op titels
-- `save_cache()` / `load_cache()` — disk persistence (data/market_universe_cache.json)
+- `save_cache()` — disk persistence
 
-## Te bouwen (Fase 3)
-- `market_mapper.py` — Twee-staps mapping: news topic → market cluster → specifieke markt
-
-## Config sectie: `mapping.*` en `filter.categories` in default.yaml
+## Config sectie: `mapping.*` in default.yaml
 
 ## Status
 - [x] universe.py — fetch + cache + filter + search
-- [ ] market_mapper.py — gepland voor Fase 3
+- [x] market_mapper.py — two-step mapping met scoring
+- [x] Unit tests (3 passing)

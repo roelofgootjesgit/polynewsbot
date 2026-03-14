@@ -1,24 +1,32 @@
 # Resolution Understanding — MODULE_CONTEXT
 
 ## Wat
-Interpreteert de officiële marktresolutie als juridisch contract. Beschermt tegen te losse interpretaties.
+Rule-based interpretatie van markt resolutietekst. Beschermt tegen te losse interpretaties.
 
-## Te bouwen (Fase 3 rule-based, Fase 6 LLM)
-- `parser.py` — Resolutietekst → gestructureerde criteria
+## Bestanden
+- `parser.py` — ResolutionParser, ResolutionCriteria, ResolutionMatch
 
-## Interfaces
-- **Input:** MarketCandidate.resolution_text + NormalizedNewsEvent
-- **Output:** resolution match score, structured criteria
+## ResolutionParser
+- `parse_criteria(market)` → ResolutionCriteria (key phrases, deadline, type, official source required)
+- `match_event(event, criteria)` → ResolutionMatch (score, matched phrases, sufficient_for_trade)
 
-## Kernvragen die beantwoord moeten worden
-- Wat moet er precies gebeuren voor YES?
-- Welke bron bepaalt de uitkomst?
-- Geldt een exacte deadline?
-- Tellen voorlopige cijfers of alleen officiële bevestigingen?
+## Resolution types gedetecteerd
+- threshold (price above/below X)
+- binary (yes/no)
+- multi_outcome (who will win)
+- date (by/before deadline)
 
-## Hard rule: geen trade als resolution understanding onvoldoende zeker is
+## Key phrases extraction
+- Regex patterns voor "resolves to yes if...", "will resolve if..."
+- Resolution keywords (announce, approve, sign, pass, reach, exceed, etc.)
+
+## Hard rule: geen trade als resolution understanding onvoldoende zeker is (min_understanding_confidence)
+
+## Fase 6: LLM upgrade voor complexe resolutieteksten
 
 ## Config sectie: `resolution.*` in default.yaml
 
 ## Status
-- [ ] Niet gestart — gepland voor Fase 3/6
+- [x] parser.py — rule-based parsing + matching
+- [x] Unit tests (7 passing)
+- [ ] LLM-based parsing — gepland voor Fase 6
