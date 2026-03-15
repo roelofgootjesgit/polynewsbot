@@ -1,0 +1,1042 @@
+Mijn oordeel in één zin:
+
+de architectuur is strategisch correct, maar je bottleneck zit nu volledig in calibration van approval, sizing en post-trade monitoring — niet meer in “de bot bouwen”.
+
+En belangrijker:
+
+dit is al een echte trading machine in dry-run, geen concept meer.
+
+Je vraag beantwoord ik zoals afgesproken:
+
+1️⃣ Is dit strategisch correct?
+
+Ja.
+Dit volgt precies de juiste keten voor prediction markets:
+
+news → relevance → mapping → resolution → probability → edge → risk veto → execution
+
+Dat is exact de goede systeemlogica voor een information-driven bot. Het sluit ook aan op je blueprint waarin de kernmodules juist deze volgorde hebben: news ingestion, relevance, market mapping, resolution, probability, edge, execution, risk, monitor, logging.
+
+Dus architectonisch zeg ik:
+
+goed ontwerp
+modulair genoeg
+guardrails goed geplaatst
+AI niet te veel macht gegeven
+
+Dat laatste is cruciaal. Je guardrails als onafhankelijke veto-laag zijn professioneel. In een systeem als dit mag de intelligentielaag nooit de veiligheidslaag overrulen. Dat past ook precies bij je eerdere ontwerpfilosofie.
+
+2️⃣ Waar zit de echte edge?
+
+De edge zit niet in “LLM gebruikt”.
+De edge zit in deze overgang:
+
+verandert dit nieuws werkelijk de kans op resolutie, en sneller dan de markt?
+
+Dat is de kern van prediction trading. Niet prijsactie, maar het verschil tussen model probability en market probability.
+
+Dus jouw systeem staat of valt niet met execution alleen, maar met drie onderdelen:
+
+resolution correctness
+
+probability calibration
+
+approval discipline
+
+Als die drie goed zijn, kun je met relatief klein kapitaal beginnen en later opschalen.
+
+3️⃣ Welke module hoort hierbij?
+
+De bottleneck zit nu vooral in:
+
+Probability Engine + Edge Engine + Guardrail calibration
+
+Niet in ingestion.
+Niet in scheduler.
+Niet in execution skeleton.
+
+Dat betekent: vanaf hier is dit geen softwareprobleem meer, maar een decision-quality probleem.
+
+Dus je volgende fase is niet “meer features”.
+Je volgende fase is:
+
+decision science voor live trading.
+
+4️⃣ Wat is de simpelste implementatie die nu het meeste oplevert?
+
+Niet Kelly.
+Niet extra AI-complexiteit.
+Niet meer bronnen.
+
+De simpelste winst zit nu in:
+
+een review- en calibration-loop rond approved en vetoed trades.
+
+Concreet moet je per event loggen:
+
+headline
+
+source tier
+
+mapped market
+
+market_prob bij decision
+
+model_prob
+
+confidence
+
+raw edge
+
+net edge
+
+veto reason of approve
+
+mid price na 5m / 15m / 60m
+
+eventual resolution label
+
+hypothetical PnL
+
+realized PnL later
+
+Zonder dat vlieg je blind.
+
+5️⃣ Wat bouwen we als eerste?
+
+Fase 7 eerst: Position Monitor & Exit Logic
+Daarna:
+Fase 8: Audit / Replay / Performance attribution
+
+Waarom?
+Omdat prediction markets niet alleen entry-spellen zijn. Je hele winstgevendheid gaat later afhangen van:
+
+wanneer repricing “klaar” is
+
+wanneer je thesis invalid wordt
+
+wanneer je exposure afbouwt
+
+wanneer je een headline eerst goed vond en later fout blijkt
+
+Dat stond ook al goed in je hoofdstuk: bij prediction markets moet je meer denken in thesis validity en price discovery completion dan in klassieke forex stop-losslogica.
+
+Quant review op je concrete vragen
+A. Zijn de edge-drempels goed?
+
+Je huidige regels:
+
+raw_edge >= 0.05
+
+net_edge >= 0.03
+
+Mijn oordeel:
+
+voor fase 0–1 live: goed
+voor schaalfase: waarschijnlijk te grof
+
+Waarom ik dit nu goed vind:
+Polymarket heeft frictie:
+
+fees
+
+spread
+
+slippage
+
+interpretatie-onzekerheid
+
+repricing die soms al half gebeurd is
+
+Dus met weinig kapitaal en nog geen volwaardige post-trade data wil je liever undertrade dan overtrade.
+
+Mijn advies:
+
+Start live met 3 bands
+
+Gebruik niet één harde drempel, maar drie regimes:
+
+Band A — strong trade
+
+raw_edge >= 8%
+
+net_edge >= 5%
+
+Band B — normal trade
+
+raw_edge >= 5%
+
+net_edge >= 3%
+
+Band C — observe only
+
+raw_edge 3–5%
+
+niet traden, wel loggen
+
+Waarom?
+Dan kun je later zien of je geld laat liggen of juist rotzooi vermijdt.
+
+Mijn verwachting:
+Bij echte live-data zal vooral de band 3–5% raw edge vaak wegsmelten in execution noise.
+
+Dus:
+5%/3% is niet te conservatief voor launch.
+Eerder verstandig.
+
+B. Position sizing: 2% per trade, 5% per cluster, 20% totaal
+
+Mijn oordeel:
+
+goed voor paper / micro-live
+te agressief voor early live if resolution risk nog niet volledig bewezen is
+
+Ik zou het opsplitsen in twee fasen.
+
+Fase A — first money live
+
+max trade: 1.0%
+
+max cluster: 3.0%
+
+max total: 10.0%
+
+daily loss stop: 2.5–3.0%
+
+equity kill switch: 10%
+
+Fase B — na 200+ echte trades of sterke paper evidence
+
+max trade: 1.5–2.0%
+
+max cluster: 5.0%
+
+max total: 15–20%
+
+Waarom terugschakelen?
+Omdat prediction markets een extra risico hebben dat forex minder direct heeft:
+
+verkeerde resolution interpretation
+
+thin liquidity
+
+event clustering
+
+narrative whipsaw op news
+
+Met andere woorden:
+je sizing hoeft niet alleen marktrisico te dragen, maar ook modelinterpretatierisico.
+
+Dus nu zou ik zeggen:
+
+architecturaal goed
+operationeel nog iets te optimistisch
+
+C. Uncertainty penalty formule
+
+Je formule:
+
+uncertainty_penalty = (1 - confidence) * 0.5 * raw_edge
+
+Mijn oordeel:
+
+zinvol als startpunt
+maar nog niet economisch goed gekalibreerd.
+
+Wat goed is:
+
+penalty groeit als confidence daalt
+
+penalty is proportioneel aan raw edge
+
+grotere claims krijgen ook grotere aftrek
+
+Wat nog mist:
+confidence is nu waarschijnlijk één scalar die te veel dingen samenpakt:
+
+source quality
+
+resolution certainty
+
+novelty
+
+mapping quality
+
+model stability
+
+Die zou ik juist uit elkaar trekken.
+
+Beter model
+
+Maak confidence decomposable:
+
+source_conf
+
+mapping_conf
+
+resolution_conf
+
+probability_conf
+
+execution_conf
+
+En maak dan bijvoorbeeld:
+
+effective_conf = weighted_average(...)
+
+of nog beter:
+
+penalty = raw_edge * penalty_multiplier
+
+waarbij de multiplier niet lineair is, maar regime-based.
+
+Bijvoorbeeld:
+
+confidence >= 0.8 → penalty 10% van raw edge
+
+0.65–0.8 → penalty 25%
+
+0.5–0.65 → penalty 45%
+
+<0.5 → veto
+
+Waarom?
+Omdat onder een bepaalde confidence de foutkans vaak niet geleidelijk oploopt, maar discontinu.
+
+Dus:
+je huidige formule is oké als MVP,
+maar ik zou hem later vervangen door een component-based confidence model.
+
+D. Moet er Kelly in?
+
+Nu: nee.
+Later: misschien een capped fractional Kelly variant.
+
+Waarom nu niet:
+
+Kelly veronderstelt dat je redelijk goed weet:
+
+win probability
+
+payoff distribution
+
+downside structure
+
+En dat weet je in deze fase nog niet goed genoeg.
+
+Bij prediction markets is dat extra lastig omdat payout niet alleen afhankelijk is van resolution, maar ook van:
+
+repricing speed
+
+exit quality
+
+slippage
+
+whether you hold to resolution or not
+
+Je hebt dus nog geen stabiele edge-distributie.
+
+Mijn advies
+
+Werk in 3 stappen:
+
+Stap 1
+
+Vaste sizing op conservatieve caps
+
+Stap 2
+
+Confidence-scaled sizing zoals je nu doet
+
+Stap 3
+
+Pas na voldoende trade history:
+fractional Kelly on net edge estimate
+
+Bijvoorbeeld:
+
+bereken empirical edge per setup bucket
+
+gebruik 0.1 Kelly of 0.25 Kelly cap
+
+nooit uncapped Kelly
+
+Dus:
+Kelly nu niet invoeren.
+Dat is te vroeg en geeft schijnprecisie.
+
+E. Welke extra guardrails wil ik zien?
+
+Hier zou ik er minimaal 8 toevoegen.
+
+1. Cooldown per event
+
+Na eerste trade op hetzelfde event:
+
+geen re-entry binnen X minuten tenzij nieuwe source tier hoger is
+
+Voorkomt overtraden op hetzelfde verhaal.
+
+2. Novelty guardrail
+
+Geen trade als headline vooral herhaling is van reeds verwerkt nieuws.
+
+3. Source escalation rule
+
+Tier-4 bron mag nooit zelfstandig executie triggeren.
+Alleen als confirmatie volgt.
+
+4. Resolution ambiguity hard veto
+
+Als resolution parser ambiguity boven drempel heeft:
+
+geen trade
+
+geen override
+
+5. Market age / time-to-resolution filter
+
+Vlak voor resolution kunnen markten chaotisch en dun worden.
+Bijvoorbeeld:
+
+geen nieuwe trades binnen laatste X uur tenzij officiële source + hoge confidence
+
+6. Orderbook shock filter
+
+Niet traden als spread of best price net extreem beweegt in laatste seconden.
+Dat kan betekenen dat repricing al loopt.
+
+7. Duplicate cluster thesis guardrail
+
+Niet drie markten openen die feitelijk exact hetzelfde risico hebben.
+
+8. Model disagreement guardrail
+
+Als rule-based en LLM sterk verschillen:
+
+downgrade confidence
+
+of hard review bucket
+Niet meteen traden.
+
+Deze passen ook precies bij je risicofilosofie uit hoofdstuk 6: bronverificatie, cluster control, false-news bescherming en liquidity discipline.
+
+F. Hoe LLM probability valideren versus rule-based?
+
+Dit is heel belangrijk.
+
+Mijn antwoord:
+
+niet op PnL alleen
+maar op calibration + decision quality
+
+Je hebt 3 lagen nodig.
+
+Laag 1 — Shadow mode A/B
+
+Voor elk event berekenen beide engines:
+
+rule_based_prob
+
+llm_prob
+
+hybrid_prob
+
+Maar slechts één mode mag “actief beslissen” in die run.
+De rest logt mee.
+
+Laag 2 — Bucket evaluation
+
+Groepeer achteraf per bucket:
+
+raw edge bucket
+
+confidence bucket
+
+source tier
+
+market category
+
+time to resolution
+
+LLM vs rules disagreement
+
+Dan meet je:
+
+hit rate
+
+average repricing capture
+
+false positive rate
+
+missed opportunity rate
+
+calibration error
+
+Laag 3 — Counterfactual replay
+
+Replay historische event streams en vergelijk:
+
+wat had rules gedaan?
+
+wat had LLM gedaan?
+
+wat deed hybrid?
+
+welke mode overtrade?
+
+welke mode miste edge?
+
+Concreet mijn validatiecriteria
+
+Ik zou LLM pas meer kapitaal geven als het op paper of replay beter scoort op:
+
+hogere average net edge realized
+
+lagere false positive rate
+
+vergelijkbare of betere calibration
+
+geen explosie in trade count
+
+geen slechtere cluster concentration
+
+Dus:
+A/B logging + paper trading + replay
+Ja.
+Precies dat.
+
+Niet blind “LLM lijkt slimmer”.
+
+Mijn harde quant-oordeel
+Wat sterk is
+
+juiste architectuur
+
+guardrails onafhankelijk
+
+nette edge-denken
+
+sizing al exposure-aware
+
+probability modes slim opgezet
+
+dry-run eerst: professioneel
+
+Wat nog kwetsbaar is
+
+confidence waarschijnlijk te simplistisch
+
+thresholds nog niet empirisch gekalibreerd
+
+exit logic ontbreekt nog
+
+replay/audit ontbreekt nog
+
+cluster risk kan nog onderschat worden
+
+LLM-validatie moet systematischer
+
+Mijn directe advies voor jouw volgende sprint
+Sprint 1
+
+Bouw Position Monitor
+Met:
+
+thesis validity state
+
+repricing completion detection
+
+timed exits
+
+invalidate-on-counter-news
+
+Sprint 2
+
+Bouw Decision Audit / Replay
+Met:
+
+all candidate trades
+
+veto reason analytics
+
+realized follow-through na 5m / 15m / 60m
+
+by-source and by-market attribution
+
+Sprint 3
+
+Kalibreer thresholds
+Niet op gevoel, maar op buckets:
+
+raw edge
+
+net edge
+
+confidence
+
+source tier
+
+category
+
+Sprint 4
+
+Pas sizing pas daarna aan
+Niet eerder.
+
+Eindconclusie
+
+Mijn professionele oordeel:
+
+dit systeem is ver genoeg om serieus te worden behandeld als proto-trading desk infrastructure.
+Niet omdat het al winstgevend bewezen is, maar omdat de juiste lagen er al zijn.
+
+Je zit nu op het punt waar de meeste hobbybouwers afhaken:
+niet meer bouwen,
+maar meten, kalibreren en beperken.
+
+En precies daar wordt een echte quant machine geboren.
+
+
+# Hoofdstuk — Arbitrage Engine voor Prediction Markets
+
+## Inleiding
+
+Naast de news-driven strategie vormt **structurele arbitrage** een tweede, onafhankelijke bron van trading edge binnen prediction markets zoals Polymarket.
+
+Waar de news-bot profiteert van **informatie-latency** — sneller nieuws verwerken dan de markt — richt de arbitrage-engine zich op **logische prijsfouten tussen markten**.
+
+Prediction markets zijn bijzonder gevoelig voor dit soort inefficiënties omdat:
+
+* traders vaak **per markt denken**, niet per logisch systeem
+* markten **door verschillende groepen traders worden geprijsd**
+* liquiditeit vaak **gefragmenteerd** is
+* prijzen niet altijd **wiskundig consistent** blijven
+
+Hierdoor ontstaan tijdelijk situaties waarin markten **logisch niet met elkaar kloppen**.
+
+Een arbitrage-engine detecteert deze inconsistenties en probeert hier systematisch van te profiteren.
+
+Het doel is niet alleen winst, maar ook **diversificatie van edge-bronnen** binnen het totale trading systeem.
+
+Het uiteindelijke platform combineert dan twee alpha-engines:
+
+1. News-Driven Probability Trading
+2. Structural Arbitrage Trading
+
+Samen vormen zij een robuuste trading stack.
+
+---
+
+# Waarom Arbitrage Werkt in Prediction Markets
+
+In traditionele financiële markten zijn arbitrage-kansen vaak extreem kortlevend omdat professionele partijen en market makers continu prijsrelaties bewaken.
+
+Prediction markets zijn anders.
+
+Belangrijke redenen:
+
+### 1. Fragmentatie van aandacht
+
+Traders kijken meestal naar één specifieke markt:
+
+* "Bitcoin boven 100k?"
+* "Trump wint verkiezing?"
+* "ETF approval in 2026?"
+
+Ze analyseren zelden **het volledige logische netwerk van markten**.
+
+### 2. Lage professionele arbitrage
+
+Veel prediction markets hebben relatief weinig professionele arbitrageurs vergeleken met forex of futuresmarkten.
+
+Hierdoor kunnen prijsrelaties tijdelijk inconsistent blijven.
+
+### 3. Event-gedreven volatiliteit
+
+Nieuws kan sommige markten direct beïnvloeden terwijl gerelateerde markten nog niet reageren.
+
+Hier ontstaat **repricing-latency tussen markten**.
+
+### 4. Complexe resolutieregels
+
+Veel markten hebben subtiele verschillen in:
+
+* resolutievoorwaarden
+* deadlines
+* definities
+
+Hierdoor kunnen prijzen tijdelijk **logisch verkeerd geïnterpreteerd worden**.
+
+---
+
+# Types Arbitrage in Prediction Markets
+
+Niet alle arbitrage is hetzelfde.
+
+Het systeem onderscheidt meerdere categorieën.
+
+---
+
+# 1. Complement Arbitrage
+
+Elke binaire markt bestaat uit twee tokens:
+
+YES en NO.
+
+In theorie geldt:
+
+YES + NO = 1
+
+Voorbeeld:
+
+| Contract | Prijs |
+| -------- | ----- |
+| YES      | 0.63  |
+| NO       | 0.41  |
+
+Som:
+
+0.63 + 0.41 = **1.04**
+
+Dit betekent dat de markt tijdelijk inconsistent is.
+
+Een trader kan beide kanten verkopen en de spread incasseren.
+
+In de praktijk moeten echter kosten worden afgetrokken:
+
+* trading fees
+* slippage
+* orderboekspread
+
+De netto arbitrage kan daardoor kleiner zijn dan het lijkt.
+
+---
+
+# 2. Ladder Arbitrage (Monotonicity)
+
+Veel markten bestaan in een reeks thresholds.
+
+Bijvoorbeeld:
+
+Bitcoin prijs voorspellingen:
+
+* BTC > $100k
+* BTC > $120k
+* BTC > $150k
+
+Logisch moet gelden:
+
+P(150k) ≤ P(120k) ≤ P(100k)
+
+Als de prijzen bijvoorbeeld zijn:
+
+| Market     | Probability |
+| ---------- | ----------- |
+| BTC > 100k | 0.58        |
+| BTC > 120k | 0.61        |
+
+Dan is er een inconsistentie.
+
+Een hogere threshold heeft een **hogere probability** dan een lagere.
+
+Dat kan niet.
+
+Deze vorm van arbitrage is relatief eenvoudig te detecteren.
+
+---
+
+# 3. Mutually Exclusive Set Arbitrage
+
+Sommige markten bevatten meerdere uitkomsten waarvan er **slechts één kan gebeuren**.
+
+Bijvoorbeeld verkiezingen.
+
+| Candidate   | Probability |
+| ----------- | ----------- |
+| Candidate A | 0.45        |
+| Candidate B | 0.40        |
+| Candidate C | 0.30        |
+
+Som:
+
+1.15
+
+Dat is logisch onmogelijk.
+
+Een arbitrageur kan dan posities nemen die profiteren van het herstel naar een consistente verdeling.
+
+---
+
+# 4. Cross-Market Logical Arbitrage
+
+Soms zijn twee markten logisch verbonden.
+
+Bijvoorbeeld:
+
+Market A
+Trump wins election
+
+Market B
+Republican wins election
+
+Omdat Trump een Republikeinse kandidaat is, moet gelden:
+
+P(Trump) ≤ P(Republican)
+
+Als deze relatie wordt geschonden, ontstaat een arbitrage-kans.
+
+---
+
+# 5. Relative Value Arbitrage
+
+Niet alle kansen zijn pure arbitrage.
+
+Soms is de relatie statistisch of economisch, niet absoluut.
+
+Bijvoorbeeld:
+
+* Bitcoin ETF approval
+* Bitcoin prijs boven bepaalde niveaus
+
+Deze markten zijn vaak sterk gecorreleerd.
+
+Prijsverschillen kunnen dan tijdelijk kansen bieden.
+
+Dit type arbitrage is minder zeker maar komt vaker voor.
+
+---
+
+# Architectuur van de Arbitrage Engine
+
+De arbitrage-engine wordt gebouwd als een aparte module binnen het trading systeem.
+
+De structuur is modulair zodat elke component onafhankelijk kan worden verbeterd.
+
+## Dataflow
+
+```
+Market Universe
+      ↓
+Market Normalizer
+      ↓
+Relation Builder
+      ↓
+Constraint Engine
+      ↓
+Arbitrage Detector
+      ↓
+Execution Feasibility Filter
+      ↓
+Paper Execution
+      ↓
+Live Execution
+      ↓
+Arbitrage Monitor
+      ↓
+Audit & Replay
+```
+
+---
+
+# Belangrijke Modules
+
+## Market Scanner
+
+Deze module haalt continu alle actieve markten op.
+
+Data die wordt verzameld:
+
+* bid en ask prijzen
+* orderboekdiepte
+* handelsvolume
+* market metadata
+* resolutietekst
+
+---
+
+## Relation Builder
+
+Hier worden logische relaties tussen markten opgebouwd.
+
+Voorbeelden:
+
+* complement relaties
+* threshold ladders
+* exclusieve sets
+* cross-market relaties
+
+Deze relaties vormen een **constraint graph**.
+
+---
+
+## Constraint Engine
+
+De constraint engine controleert of markten voldoen aan logische regels.
+
+Voorbeelden:
+
+YES + NO ≈ 1
+
+P(A) ≤ P(B)
+
+P(A) + P(B) + P(C) ≤ 1
+
+Elke overtreding wordt gemeten als **constraint violation**.
+
+---
+
+## Arbitrage Detector
+
+Wanneer een constraint wordt geschonden, berekent de detector:
+
+* bruto violation
+* fee-correctie
+* slippage-correctie
+* netto executable edge
+
+Alleen wanneer de netto edge boven een minimum ligt wordt de kans doorgestuurd.
+
+---
+
+## Execution Engine
+
+De execution engine probeert meerdere legs tegelijk uit te voeren.
+
+Dit vereist:
+
+* order synchronisatie
+* partial fill handling
+* hedge monitoring
+
+Arbitrage execution is complexer dan single-leg trading.
+
+---
+
+## Arbitrage Monitor
+
+Deze module bewaakt open arbitrageposities.
+
+Taken:
+
+* controleren of alle legs gevuld zijn
+* hedge-risico minimaliseren
+* posities sluiten bij afwijkingen
+
+---
+
+# Execution Risico's
+
+Arbitrage lijkt vaak risicoloos maar dat is zelden volledig waar.
+
+Belangrijke risico's:
+
+### Partial fills
+
+Eén kant van de trade wordt gevuld, de hedge niet.
+
+### Liquidity illusion
+
+Best price is zichtbaar maar niet uitvoerbaar in voldoende grootte.
+
+### Resolution mismatch
+
+Markten lijken gelijk maar hebben subtiel verschillende resolutiecriteria.
+
+### Timing risico
+
+De prijs kan veranderen tussen orderplaatsing en execution.
+
+---
+
+# Guardrails voor Arbitrage
+
+De arbitrage engine bevat daarom strikte veiligheidsregels.
+
+Voorbeelden:
+
+* minimale liquiditeit per leg
+* maximale slippage
+* resolutie-consistentie controle
+* deadline-consistentie
+* maximale cluster-exposure
+* cooldown na mislukte execution
+* kill switch bij hedge imbalance
+
+Deze guardrails zorgen ervoor dat de arbitrage engine **geen ongecontroleerde risico's neemt**.
+
+---
+
+# Position Sizing
+
+Omdat arbitrage meerdere legs bevat, wordt position sizing conservatief gehouden.
+
+Voorbeeldinstellingen:
+
+max trade = 0.5–1.0% van kapitaal
+max cluster = 2.5%
+max totaal = 7.5–10%
+
+Dit voorkomt dat één mislukte arbitrage trade grote schade veroorzaakt.
+
+---
+
+# Development Fases
+
+De arbitrage engine wordt gefaseerd ontwikkeld.
+
+### Fase 1 — Scanner
+
+Alleen detecteren van prijsinconsistenties.
+
+Nog geen trading.
+
+### Fase 2 — Paper Arbitrage
+
+Simulatie van trades.
+
+Analyse van hypothetische P&L.
+
+### Fase 3 — Micro Live
+
+Kleine posities in markten met hoge liquiditeit.
+
+### Fase 4 — Volledige Integratie
+
+Combinatie met de news-driven strategie.
+
+---
+
+# De Rol Binnen het Totale Trading Systeem
+
+De arbitrage engine vormt een tweede pijler naast de nieuwsbot.
+
+Samen leveren ze:
+
+* informatie-edge
+* structurele prijs-edge
+* diversificatie
+
+Hierdoor wordt het trading systeem robuuster.
+
+De news-bot profiteert van snelle informatieverwerking.
+
+De arbitrage engine profiteert van logische prijsfouten.
+
+Wanneer beide systemen samenwerken ontstaat een trading infrastructuur die meerdere soorten inefficiënties kan exploiteren.
+
+---
+
+# Conclusie
+
+Prediction markets bevatten unieke arbitrage-mogelijkheden die in traditionele markten zelden voorkomen.
+
+Door systematisch prijsrelaties te analyseren kan een trading systeem:
+
+* logische inconsistenties detecteren
+* uitvoerbare arbitrage-kansen vinden
+* risico's gecontroleerd beheren
+
+Hoewel arbitrage zelden volledig risicoloos is, kan een goed ontworpen arbitrage-engine een stabiele bron van trading edge vormen.
+
+In combinatie met een news-driven strategie ontstaat een krachtig platform dat zowel informatie-latency als structurele prijsinefficiënties benut.

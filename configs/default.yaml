@@ -67,11 +67,25 @@ ai:
   max_retries: 2
 
 edge:
-  min_raw_edge: 0.05
-  min_net_edge: 0.03
   fee_rate: 0.02
   slippage_estimate: 0.01
   uncertainty_penalty_weight: 0.5
+  bands:
+    - name: "strong"
+      min_raw_edge: 0.08
+      min_net_edge: 0.05
+      size_scale: 1.0
+      log_only: false
+    - name: "normal"
+      min_raw_edge: 0.05
+      min_net_edge: 0.03
+      size_scale: 0.7
+      log_only: false
+    - name: "observe"
+      min_raw_edge: 0.03
+      min_net_edge: 0.00
+      size_scale: 0.0
+      log_only: true
 
 execution:
   dry_run: true
@@ -80,14 +94,16 @@ execution:
   timeout_seconds: 10
 
 risk:
-  max_position_pct: 0.02        # 2% of capital per trade
-  max_cluster_pct: 0.05         # 5% per event cluster
-  max_total_exposure_pct: 0.20  # 20% total
+  # Fase A — conservative first-live (quant review)
+  max_position_pct: 0.01        # 1% of capital per trade
+  max_cluster_pct: 0.03         # 3% per event cluster
+  max_total_exposure_pct: 0.10  # 10% total
   min_source_tier: 3            # don't trade on tier 4 alone
   min_confidence: 0.5
   max_spread: 0.10
-  max_daily_loss_pct: 0.05
-  equity_kill_switch_pct: 0.15
+  max_daily_loss_pct: 0.025     # 2.5% daily loss stop
+  equity_kill_switch_pct: 0.10  # 10% drawdown kill switch
+  event_cooldown_minutes: 30    # no re-entry same event within 30min
 
 monitor:
   check_interval_seconds: 60

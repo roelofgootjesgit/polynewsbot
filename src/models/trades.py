@@ -32,6 +32,9 @@ class TradeDecision(BaseModel):
     confidence: float = Field(0.0, ge=0.0, le=1.0)
     source_quality: float = Field(0.0, ge=0.0, le=1.0)
 
+    edge_band: str = Field("unknown", description="strong | normal | observe | below_threshold")
+    size_scale: float = Field(1.0, ge=0.0, le=1.0, description="Sizing multiplier from edge band")
+
 
 class Position(BaseModel):
     """An open position being monitored for thesis validity."""

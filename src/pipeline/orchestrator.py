@@ -21,6 +21,10 @@ from src.mapping.universe import MarketUniverse
 from src.market_state.analyzer import MarketStateAnalyzer
 from src.models.events import NormalizedNewsEvent
 from src.models.markets import MarketCandidate
+from src.models.trades import Position
+from src.monitor.counter_news import CounterNewsDetector
+from src.monitor.exit_engine import ExitEngine
+from src.monitor.position_monitor import PositionMonitor
 from src.news.poller import NewsPoller
 from src.risk.exposure import ExposureTracker
 from src.risk.guardrails import Guardrails
@@ -33,6 +37,7 @@ class PipelineStats:
     __slots__ = (
         "events_polled", "events_passed_filter", "markets_matched",
         "edges_found", "trades_approved", "trades_executed", "vetoed",
+        "positions_checked", "positions_exited",
     )
 
     def __init__(self):
@@ -43,13 +48,15 @@ class PipelineStats:
         self.trades_approved = 0
         self.trades_executed = 0
         self.vetoed = 0
+        self.positions_checked = 0
+        self.positions_exited = 0
 
     def summary(self) -> str:
         return (
             f"polled={self.events_polled} -> filtered={self.events_passed_filter} "
             f"-> matched={self.markets_matched} -> edges={self.edges_found} "
             f"-> approved={self.trades_approved} -> executed={self.trades_executed} "
-            f"(vetoed={self.vetoed})"
+            f"(vetoed={self.vetoed}) | open_pos={self.positions_checked} exits={self.positions_exited}"
         )
 
 
@@ -77,6 +84,11 @@ class EventPipeline:
         self.llm: Optional[LLMClient] = None
         self.probability = HybridProbabilityEngine(cfg)
         self.resolution = HybridResolutionParser(cfg)
+
+        self.position_monitor = PositionMonitor(cfg)
+        self.exit_engine = ExitEngine(cfg)
+        self.counter_news = CounterNewsDetector(cfg)
+        self._positions: dict[str, Position] = {}
 
         self.client: Optional[PolymarketClient] = None
         self._running = False
@@ -156,23 +168,67 @@ class EventPipeline:
         """Execute one full pipeline cycle."""
         stats = PipelineStats()
 
-        # 1. Poll news
+        # 1. Monitor existing positions (exit checks)
+        self._check_open_positions(stats)
+
+        # 2. Poll news
         events = self.poller.poll()
         stats.events_polled = len(events)
         if not events:
             return stats
 
-        # 2. Relevance filter
+        # 3. Relevance filter
         relevant = self.relevance.filter_batch(events)
         stats.events_passed_filter = len(relevant)
+
+        # 4. Check counter-news against open positions
+        open_positions = list(self._positions.values())
+        for event in relevant:
+            self.counter_news.check_against_positions(
+                event, open_positions, self.position_monitor,
+            )
+
         if not relevant:
             return stats
 
-        # 3. Process each event through the full pipeline
+        # 5. Process each event through the full pipeline
         for event in relevant:
             self._process_event(event, stats)
 
         return stats
+
+    def _check_open_positions(self, stats: PipelineStats) -> None:
+        """Check all open positions for exit signals."""
+        open_pos = [p for p in self._positions.values() if p.status == "open"]
+        if not open_pos:
+            return
+
+        def price_fetcher(market_id: str) -> float | None:
+            state = self._get_market_state(
+                MarketCandidate(
+                    market_id=market_id, condition_id="",
+                    market_title="", resolution_text="",
+                )
+            )
+            if state and state.mid_price:
+                return state.mid_price
+            return None
+
+        snapshots = self.position_monitor.check_all(open_pos, price_fetcher)
+
+        exits = self.exit_engine.process_exits(
+            snapshots, self._positions, self.order_manager,
+            self.exposure, self.client,
+        )
+
+        for ex in exits:
+            if ex.executed:
+                self.position_monitor.remove_position(ex.position_id)
+                self.guardrails.update_daily_pnl(ex.realized_pnl)
+                logger.info(
+                    "Position closed: %s | pnl=$%.2f | reason=%s",
+                    ex.position_id, ex.realized_pnl, ex.exit_signal,
+                )
 
     def _process_event(self, event: NormalizedNewsEvent, stats: PipelineStats) -> None:
         """Process a single news event through mapping → edge → execution."""
@@ -306,7 +362,10 @@ class EventPipeline:
         stats: PipelineStats,
         trace: DecisionTrace,
     ) -> None:
-        """Execute a trade (or simulate in dry-run)."""
+        """Execute a trade (or simulate in dry-run) and register position for monitoring."""
+        from datetime import datetime, timezone
+        import uuid
+
         price = decision.market_probability
         if decision.side == "YES":
             price = min(decision.market_probability + 0.01, 0.99)
@@ -335,16 +394,37 @@ class EventPipeline:
             "size_usd": size_usd,
             "dry_run": order.dry_run,
             "status": order.status,
+            "edge_band": decision.edge_band,
         })
         trace.set_outcome("executed" if not order.dry_run else "dry_run_executed",
-                          f"{decision.side} @ {price:.4f} x {shares:.2f}")
+                          f"{decision.side} @ {price:.4f} x {shares:.2f} [{decision.edge_band}]")
+
+        # Create and register position for monitoring
+        pos = Position(
+            position_id=f"pos-{uuid.uuid4().hex[:8]}",
+            market_id=market.market_id,
+            event_id=event.event_id,
+            side=decision.side,
+            entry_price=price,
+            entry_timestamp=datetime.now(timezone.utc),
+            shares=round(shares, 2),
+            cost_basis_usd=round(size_usd, 2),
+            original_model_probability=decision.model_probability,
+            original_confidence=decision.confidence,
+            status="open",
+        )
+        self._positions[pos.position_id] = pos
+        self.exposure.add_position(pos)
+        self.position_monitor.register_position(
+            pos, decision.model_probability, decision.net_edge,
+        )
 
         logger.info(
-            "%s TRADE: %s %s @ %.4f x %.0f ($%.2f) | edge=%.4f | %s",
+            "%s TRADE: %s %s @ %.4f x %.0f ($%.2f) | band=%s edge=%.4f | %s",
             "DRY" if order.dry_run else "LIVE",
             decision.side, market.market_title[:30],
-            price, shares, size_usd, decision.net_edge,
-            event.headline[:40],
+            price, shares, size_usd, decision.edge_band,
+            decision.net_edge, event.headline[:40],
         )
 
     def shutdown(self) -> None:

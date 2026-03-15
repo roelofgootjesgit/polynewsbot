@@ -16,16 +16,17 @@ def test_load_default_config():
 def test_config_has_risk_defaults():
     cfg = load_config()
     risk = cfg["risk"]
-    assert risk["max_position_pct"] == 0.02
-    assert risk["max_cluster_pct"] == 0.05
-    assert risk["max_total_exposure_pct"] == 0.20
+    assert risk["max_position_pct"] == 0.01
+    assert risk["max_cluster_pct"] == 0.03
+    assert risk["max_total_exposure_pct"] == 0.10
 
 
 def test_config_has_edge_defaults():
     cfg = load_config()
     edge = cfg["edge"]
-    assert edge["min_raw_edge"] == 0.05
-    assert edge["min_net_edge"] == 0.03
+    assert edge["fee_rate"] == 0.02
+    assert isinstance(edge["bands"], list)
+    assert len(edge["bands"]) == 3
 
 
 def test_config_dry_run_default():

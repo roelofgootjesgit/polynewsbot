@@ -3,6 +3,7 @@ Guardrails — independent veto layer that can block any trade.
 Stands between the edge engine and execution. Cannot be overridden by AI.
 """
 import logging
+import time
 from typing import Any
 
 from src.models.events import SourceTier
@@ -28,6 +29,19 @@ class Guardrails:
     """
     Veto logic — independent of the intelligence layer.
     A good bot is defined by how often it correctly does NOT trade.
+
+    Checks (quant-approved):
+    - Edge band must allow execution
+    - Source quality minimum
+    - Confidence minimum (hard veto < 0.5)
+    - Spread maximum
+    - Liquidity quality
+    - Resolution match strength
+    - Daily loss circuit breaker
+    - Equity kill switch (drawdown from peak)
+    - Event cooldown (no re-entry same event within window)
+    - Source escalation (tier 4 alone cannot trigger)
+    - Size scale from edge band applied to position sizing
     """
 
     def __init__(self, cfg: dict[str, Any]):
@@ -35,13 +49,16 @@ class Guardrails:
         self.min_source_tier: int = risk_cfg.get("min_source_tier", 3)
         self.min_confidence: float = risk_cfg.get("min_confidence", 0.5)
         self.max_spread: float = risk_cfg.get("max_spread", 0.10)
-        self.max_daily_loss_pct: float = risk_cfg.get("max_daily_loss_pct", 0.05)
-        self.equity_kill_switch: float = risk_cfg.get("equity_kill_switch_pct", 0.15)
+        self.max_daily_loss_pct: float = risk_cfg.get("max_daily_loss_pct", 0.025)
+        self.equity_kill_switch: float = risk_cfg.get("equity_kill_switch_pct", 0.10)
+        self.event_cooldown_minutes: float = risk_cfg.get("event_cooldown_minutes", 30)
 
         self._sizer = PositionSizer(cfg)
         self._daily_pnl: float = 0.0
         self._peak_capital: float = 0.0
         self._kill_switch: bool = False
+
+        self._event_last_trade: dict[str, float] = {}
 
     def evaluate(
         self,
@@ -65,11 +82,17 @@ class Guardrails:
             result.veto_reasons.extend(decision.veto_reasons)
             return result
 
-        # --- Source tier check ---
+        # --- Source quality check ---
         if assessment.source_quality_score < 0.3:
             result.veto_reasons.append(
                 f"source quality {assessment.source_quality_score:.2f} too low"
             )
+
+        # --- Source escalation: tier 4 alone cannot trigger ---
+        if (hasattr(assessment, 'source_quality_score')
+                and assessment.source_quality_score <= 0.25
+                and decision.confidence < 0.7):
+            result.veto_reasons.append("tier 4 source cannot trigger alone")
 
         # --- Confidence check ---
         if decision.confidence < self.min_confidence:
@@ -97,6 +120,16 @@ class Guardrails:
         if capital > 0 and self._daily_pnl / capital <= -self.max_daily_loss_pct:
             result.veto_reasons.append("daily loss limit reached")
 
+        # --- Event cooldown ---
+        event_id = decision.event_id
+        last_trade_time = self._event_last_trade.get(event_id)
+        if last_trade_time:
+            elapsed_min = (time.time() - last_trade_time) / 60.0
+            if elapsed_min < self.event_cooldown_minutes:
+                result.veto_reasons.append(
+                    f"event cooldown: {elapsed_min:.0f}min < {self.event_cooldown_minutes}min"
+                )
+
         # --- Position sizing (also checks exposure limits) ---
         if not result.veto_reasons:
             cluster_exp = exposure.get_cluster_exposure(cluster_id)
@@ -110,18 +143,23 @@ class Guardrails:
                 cluster_exposure=cluster_exp,
                 total_exposure=total_exp,
             )
+
+            size *= decision.size_scale
+
             if size <= 0:
                 result.veto_reasons.append("position size is zero (exposure limits)")
             else:
-                result.position_size_usd = size
+                result.position_size_usd = round(size, 2)
 
         result.approved = len(result.veto_reasons) == 0
 
         if result.approved:
+            self._event_last_trade[event_id] = time.time()
             logger.info(
-                "APPROVED: %s %s | edge=%.4f | size=$%.2f | %s",
+                "APPROVED: %s %s | band=%s | edge=%.4f | size=$%.2f | %s",
                 decision.side, decision.market_id[:16],
-                decision.net_edge, result.position_size_usd,
+                decision.edge_band, decision.net_edge,
+                result.position_size_usd,
                 assessment.reasoning_summary[:60],
             )
         else:
