@@ -397,4 +397,4 @@ Polymarket_news_bot/
 | 5 | Pipeline Orchestratie | 11-12 | ☑ Afgerond |
 | 6 | AI Interpretatie | 13-15 | ☑ Afgerond |
 | 7 | Position Monitor | 16-17 | ☑ Afgerond |
-| 8 | Audit + Replay | 18-20 | ☐ Niet gestart |
+| 8 | Audit + Replay | 18-20 | ☑ Afgerond |
