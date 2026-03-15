@@ -9,9 +9,10 @@ from typing import Any
 import yaml
 from dotenv import load_dotenv
 
-load_dotenv()
-
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+load_dotenv(_PROJECT_ROOT / "configs" / ".env")
+load_dotenv(_PROJECT_ROOT / ".env")
 _DEFAULT_PATH = _PROJECT_ROOT / "configs" / "default.yaml"
 
 
